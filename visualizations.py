@@ -26,6 +26,45 @@ class Visualizer:
         )
         return fig
     
+    def plot_trl_distribution(self, df: pd.DataFrame) -> go.Figure:
+        """Create bar chart showing distribution of TRL values"""
+        try:
+            if df.empty or 'TRL' not in df.columns:
+                return self._create_empty_figure("No TRL data available")
+            
+            # Remove null values and get value counts
+            trl_counts = df['TRL'].dropna().astype(int).value_counts().sort_index()
+            
+            if trl_counts.empty:
+                return self._create_empty_figure("No valid TRL data available")
+            
+            fig = px.bar(
+                x=trl_counts.index,
+                y=trl_counts.values,
+                labels={'x': 'TRL Level', 'y': 'Number of Articles'},
+                title='Distribution of Technology Readiness Levels (TRL)'
+            )
+            
+            # Customize layout
+            fig.update_layout(
+                xaxis_title="TRL Level",
+                yaxis_title="Number of Articles",
+                bargap=0.2,
+                height=400,
+                showlegend=False,
+                hovermode='x unified'
+            )
+            
+            # Add hover template
+            fig.update_traces(
+                hovertemplate="<b>TRL Level:</b> %{x}<br><b>Articles:</b> %{y}<extra></extra>"
+            )
+            
+            return fig
+            
+        except Exception as e:
+            return self._create_empty_figure(f"Error creating TRL distribution: {str(e)}")
+    
     def plot_topic_distribution(self, df: pd.DataFrame) -> go.Figure:
         """Create interactive bar chart of topic distribution"""
         try:
