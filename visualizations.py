@@ -31,17 +31,25 @@ class Visualizer:
         """Create line chart of technology mentions over time"""
         if 'Year' not in filtered_df.columns:
             return go.Figure()
-            
-        tech_by_year = filtered_df.groupby(['Year', 'Technologies']).size().unstack(fill_value=0)
+        
+        # Create a temporary dataframe with exploded technologies
+        temp_df = filtered_df.copy()
+        temp_df['Technologies'] = temp_df['Technologies'].fillna('')
+        temp_df = temp_df[temp_df['Technologies'] != '']  # Remove rows with no technologies
+        temp_df = temp_df.assign(Technologies=temp_df['Technologies'].str.split(';')).explode('Technologies')
+        
+        # Group by year and technology
+        tech_by_year = pd.crosstab(temp_df['Year'], temp_df['Technologies'])
         
         fig = go.Figure()
         for tech in tech_by_year.columns:
-            fig.add_trace(go.Scatter(
-                x=tech_by_year.index,
-                y=tech_by_year[tech],
-                name=tech,
-                mode='lines+markers'
-            ))
+            if tech:  # Skip empty technology names
+                fig.add_trace(go.Scatter(
+                    x=tech_by_year.index,
+                    y=tech_by_year[tech],
+                    name=tech,
+                    mode='lines+markers'
+                ))
         
         fig.update_layout(
             title="Technology Mentions Over Time",

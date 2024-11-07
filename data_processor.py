@@ -26,11 +26,14 @@ class DataProcessor:
         if 'TRL' in self.df.columns:
             self.df['TRL'] = pd.to_numeric(self.df['TRL'], errors='coerce')
         
-        # Extract technology mentions from article description
+        # Extract technology mentions from article description and store as semicolon-separated string
         self.df['Technologies'] = self.df['article description'].apply(self._extract_technologies)
     
-    def _extract_technologies(self, text: str) -> List[str]:
-        """Extract technology mentions from text"""
+    def _extract_technologies(self, text: str) -> str:
+        """Extract technology mentions from text and return as semicolon-separated string"""
+        if pd.isna(text) or not isinstance(text, str):
+            return ''
+            
         # Common technology keywords in microbiology (both English and Russian)
         tech_keywords = [
             'PCR', 'ПЦР',
@@ -42,7 +45,8 @@ class DataProcessor:
             'chromatography', 'хроматография',
             'microarray', 'микрочип'
         ]
-        return [tech for tech in tech_keywords if tech.lower() in text.lower()]
+        found_techs = [tech for tech in tech_keywords if tech.lower() in text.lower()]
+        return ';'.join(found_techs) if found_techs else ''
     
     def get_topic_distribution(self) -> Dict[str, int]:
         """Get distribution of articles across topics"""
