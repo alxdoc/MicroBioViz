@@ -6,6 +6,7 @@ from collections import Counter
 from typing import List, Dict, Tuple
 import networkx as nx
 import numpy as np
+import logging
 
 class TextAnalyzer:
     def __init__(self, df: pd.DataFrame):
@@ -13,21 +14,26 @@ class TextAnalyzer:
         self._initialize_nltk()
         self.stop_words = set(stopwords.words('english'))
         self.stop_words.update(['study', 'research', 'analysis', 'results'])
+        logging.basicConfig(level=logging.DEBUG)
+        self.logger = logging.getLogger(__name__)
     
     def _initialize_nltk(self):
         """Initialize NLTK resources with error handling"""
         try:
             nltk.download('punkt', quiet=True)
             nltk.download('stopwords', quiet=True)
+            self.logger.debug("Successfully initialized NLTK resources")
         except Exception as e:
-            print(f"Error downloading NLTK resources: {str(e)}")
+            self.logger.error(f"Error downloading NLTK resources: {str(e)}")
             raise Exception("Failed to initialize NLTK resources")
     
     def _preprocess_text(self, text: str) -> List[str]:
         """Preprocess text for analysis"""
-        if not isinstance(text, str):
+        if not isinstance(text, str) or not text.strip():
+            self.logger.debug("Empty or invalid text input for preprocessing")
             return []
         try:
+            self.logger.debug("Starting text preprocessing")
             # Tokenize
             tokens = word_tokenize(text.lower())
             # Remove stopwords and non-alphabetic tokens
@@ -35,17 +41,52 @@ class TextAnalyzer:
                      if token.isalpha() 
                      and token not in self.stop_words 
                      and len(token) > 2]
+            self.logger.debug(f"Preprocessed {len(tokens)} valid tokens")
             return tokens
         except Exception as e:
-            print(f"Error preprocessing text: {str(e)}")
+            self.logger.error(f"Error preprocessing text: {str(e)}")
             return []
     
     def get_common_themes(self, filtered_df: pd.DataFrame, top_n: int = 10) -> Dict[str, int]:
         """Extract common themes from article descriptions"""
-        all_text = ' '.join(filtered_df['article description'].fillna(''))
-        tokens = self._preprocess_text(all_text)
-        word_freq = Counter(tokens)
-        return dict(word_freq.most_common(top_n))
+        try:
+            self.logger.debug("Starting theme extraction")
+            
+            # Validate input data
+            if filtered_df.empty or 'article description' not in filtered_df.columns:
+                self.logger.warning("Empty dataframe or missing article description column")
+                return {'no data': 1}
+            
+            # Combine all valid descriptions
+            descriptions = filtered_df['article description'].dropna()
+            if descriptions.empty:
+                self.logger.warning("No valid article descriptions found")
+                return {'no data': 1}
+            
+            all_text = ' '.join(descriptions)
+            if not all_text.strip():
+                self.logger.warning("Empty combined text after joining descriptions")
+                return {'no data': 1}
+            
+            # Process text
+            self.logger.debug("Processing combined text")
+            tokens = self._preprocess_text(all_text)
+            
+            # Handle empty tokens
+            if not tokens:
+                self.logger.warning("No valid tokens found after preprocessing")
+                return {'no data': 1}
+            
+            # Calculate word frequencies
+            word_freq = Counter(tokens)
+            result = dict(word_freq.most_common(top_n))
+            
+            self.logger.debug(f"Extracted {len(result)} themes")
+            return result if result else {'no data': 1}
+            
+        except Exception as e:
+            self.logger.error(f"Error in theme extraction: {str(e)}")
+            return {'error': 1}
     
     def get_keyword_context(self, keyword: str) -> List[str]:
         """Get context around keyword mentions"""
@@ -58,7 +99,7 @@ class TextAnalyzer:
                         if keyword.lower() in sentence.lower():
                             contexts.append(sentence)
                 except Exception as e:
-                    print(f"Error processing keyword context: {str(e)}")
+                    self.logger.error(f"Error processing keyword context: {str(e)}")
         return contexts
     
     def get_technology_network(self, filtered_df: pd.DataFrame) -> Tuple[List[str], List[Tuple[str, str, float]]]:
@@ -126,5 +167,5 @@ class TextAnalyzer:
             return result
             
         except Exception as e:
-            print(f"Error calculating TRL-Year correlation: {str(e)}")
+            self.logger.error(f"Error calculating TRL-Year correlation: {str(e)}")
             return result
