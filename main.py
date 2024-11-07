@@ -40,7 +40,7 @@ def main():
             # Apply filters
             filtered_df = filter_dataframe(st.session_state.data, years, ranks)
             
-            # Main content
+            # Main content layout
             col1, col2 = st.columns(2)
             
             with col1:
@@ -52,24 +52,55 @@ def main():
                     st.subheader("TRL Distribution")
                     fig_trl = st.session_state.visualizer.plot_trl_distribution(filtered_df)
                     st.plotly_chart(fig_trl, use_container_width=True)
+                    
+                    # Add TRL-Year correlation analysis
+                    trl_correlation = st.session_state.text_analyzer.get_trl_year_correlation(filtered_df)
+                    st.subheader("TRL Analysis")
+                    st.write(f"Correlation between TRL and Publication Year: {trl_correlation['correlation']:.2f}")
+                    if trl_correlation['avg_trl_by_year']:
+                        st.write("Average TRL by Year:")
+                        for year, avg_trl in sorted(trl_correlation['avg_trl_by_year'].items()):
+                            st.write(f"- {int(year)}: {avg_trl:.1f}")
             
             with col2:
                 st.subheader("Technology Mentions Over Time")
                 fig_tech = st.session_state.visualizer.plot_technology_trends(filtered_df)
                 st.plotly_chart(fig_tech, use_container_width=True)
                 
-                st.subheader("Common Themes")
+                # Add word cloud visualization
+                st.subheader("Theme Word Cloud")
                 themes = st.session_state.text_analyzer.get_common_themes(filtered_df)
-                st.write(themes)
+                fig_cloud = st.session_state.visualizer.plot_word_cloud(themes)
+                st.plotly_chart(fig_cloud, use_container_width=True)
             
-            # Article search and details
-            st.subheader("Search Articles")
+            # Advanced Analysis Section
+            st.header("Advanced Analysis")
+            
+            # Technology Network Analysis
+            st.subheader("Technology Co-occurrence Network")
+            nodes, edges = st.session_state.text_analyzer.get_technology_network(filtered_df)
+            if nodes and edges:
+                fig_network = st.session_state.visualizer.plot_tech_network(nodes, edges)
+                st.plotly_chart(fig_network, use_container_width=True)
+            else:
+                st.info("Not enough technology co-occurrence data to generate network visualization")
+            
+            # Topic Trends Analysis
+            st.subheader("Topic Trends Over Time")
+            topic_trends = st.session_state.text_analyzer.analyze_topic_trends(filtered_df)
+            if not topic_trends.empty:
+                fig_trends = st.session_state.visualizer.plot_topic_trends(topic_trends)
+                st.plotly_chart(fig_trends, use_container_width=True)
+            else:
+                st.info("Not enough temporal data to analyze topic trends")
+            
+            # Article Search and Details
+            st.header("Article Search")
             search_term = st.text_input("Search by title or keywords")
             if search_term:
                 search_results = st.session_state.processor.search_articles(search_term)
                 for _, article in search_results.iterrows():
                     with st.expander(f"{article['Title']}"):
-                        # Display all available columns in an organized way
                         col_left, col_right = st.columns(2)
                         
                         with col_left:
@@ -94,7 +125,6 @@ def main():
                                     if tech:
                                         st.write(f"- {tech}")
                         
-                        # Display any additional columns that might be present
                         additional_cols = [col for col in article.index if col not in [
                             'Title', 'Authors', 'rank', 'Year', 'TRL', 
                             'article description', 'Technologies'
