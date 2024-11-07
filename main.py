@@ -20,54 +20,64 @@ def main():
     uploaded_file = st.file_uploader("Upload Excel file containing article data", type=['xlsx', 'xls'])
     
     if uploaded_file is not None:
-        if st.session_state.data is None:
-            # Load and process data
-            df = load_data(uploaded_file)
-            st.session_state.data = df
-            st.session_state.processor = DataProcessor(df)
-            st.session_state.visualizer = Visualizer(df)
-            st.session_state.text_analyzer = TextAnalyzer(df)
-    
-        # Sidebar filters
-        st.sidebar.title("Filters")
-        years = st.sidebar.multiselect("Select Years", options=sorted(st.session_state.data['Year'].unique()))
-        topics = st.sidebar.multiselect("Select Topics", options=sorted(st.session_state.data['Topic'].unique()))
+        try:
+            if st.session_state.data is None:
+                # Load and process data
+                df = load_data(uploaded_file)
+                st.session_state.data = df
+                st.session_state.processor = DataProcessor(df)
+                st.session_state.visualizer = Visualizer(df)
+                st.session_state.text_analyzer = TextAnalyzer(df)
         
-        # Apply filters
-        filtered_df = filter_dataframe(st.session_state.data, years, topics)
-        
-        # Main content
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            st.subheader("Article Distribution by Topic")
-            fig_topics = st.session_state.visualizer.plot_topic_distribution(filtered_df)
-            st.plotly_chart(fig_topics, use_container_width=True)
+            # Sidebar filters
+            st.sidebar.title("Filters")
+            if 'Year' in st.session_state.data.columns:
+                years = st.sidebar.multiselect("Select Years", options=sorted(st.session_state.data['Year'].unique()))
+            else:
+                years = []
+            topics = st.sidebar.multiselect("Select Topics", options=sorted(st.session_state.data['Topic'].unique()))
             
-            st.subheader("Technology Mentions Over Time")
-            fig_tech = st.session_state.visualizer.plot_technology_trends(filtered_df)
-            st.plotly_chart(fig_tech, use_container_width=True)
-        
-        with col2:
-            st.subheader("Institutional Collaboration Network")
-            fig_network = st.session_state.visualizer.plot_collaboration_network(filtered_df)
-            st.plotly_chart(fig_network, use_container_width=True)
+            # Apply filters
+            filtered_df = filter_dataframe(st.session_state.data, years, topics)
             
-            st.subheader("Common Themes")
-            themes = st.session_state.text_analyzer.get_common_themes(filtered_df)
-            st.write(themes)
+            # Main content
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.subheader("Article Distribution by Topic")
+                fig_topics = st.session_state.visualizer.plot_topic_distribution(filtered_df)
+                st.plotly_chart(fig_topics, use_container_width=True)
+                
+                if 'TRL' in filtered_df.columns:
+                    st.subheader("TRL Distribution")
+                    fig_trl = st.session_state.visualizer.plot_trl_distribution(filtered_df)
+                    st.plotly_chart(fig_trl, use_container_width=True)
+            
+            with col2:
+                st.subheader("Technology Mentions Over Time")
+                fig_tech = st.session_state.visualizer.plot_technology_trends(filtered_df)
+                st.plotly_chart(fig_tech, use_container_width=True)
+                
+                st.subheader("Common Themes")
+                themes = st.session_state.text_analyzer.get_common_themes(filtered_df)
+                st.write(themes)
+            
+            # Article search and details
+            st.subheader("Search Articles")
+            search_term = st.text_input("Search by title or keywords")
+            if search_term:
+                search_results = st.session_state.processor.search_articles(search_term)
+                for _, article in search_results.iterrows():
+                    with st.expander(f"{article['Title']}"):
+                        st.write(f"**Authors:** {article['Authors']}")
+                        st.write(f"**Topic:** {article['Topic']}")
+                        if 'TRL' in article and pd.notna(article['TRL']):
+                            st.write(f"**TRL:** {article['TRL']}")
+                        st.write(f"**Abstract:** {article['Abstract']}")
         
-        # Article search and details
-        st.subheader("Search Articles")
-        search_term = st.text_input("Search by title or keywords")
-        if search_term:
-            search_results = st.session_state.processor.search_articles(search_term)
-            for _, article in search_results.iterrows():
-                with st.expander(f"{article['Title']} ({article['Year']})"):
-                    st.write(f"**Authors:** {article['Authors']}")
-                    st.write(f"**Institution:** {article['Institution']}")
-                    st.write(f"**Topic:** {article['Topic']}")
-                    st.write(f"**Abstract:** {article['Abstract']}")
+        except Exception as e:
+            st.error(f"Error: {str(e)}")
+            st.session_state.data = None
     
     else:
         st.info("Please upload an Excel file to begin analysis")
