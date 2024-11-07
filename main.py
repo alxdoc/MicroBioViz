@@ -69,11 +69,42 @@ def main():
                 search_results = st.session_state.processor.search_articles(search_term)
                 for _, article in search_results.iterrows():
                     with st.expander(f"{article['Title']}"):
-                        st.write(f"**Authors:** {article['Authors']}")
-                        st.write(f"**Topic:** {article['rank']}")
-                        if 'TRL' in article and pd.notna(article['TRL']):
-                            st.write(f"**TRL:** {article['TRL']}")
-                        st.write(f"**Description:** {article['article description']}")
+                        # Display all available columns in an organized way
+                        col_left, col_right = st.columns(2)
+                        
+                        with col_left:
+                            st.markdown("#### Basic Information")
+                            st.write(f"**Title:** {article['Title']}")
+                            st.write(f"**Authors:** {article['Authors']}")
+                            st.write(f"**Topic:** {article['rank']}")
+                            if 'Year' in article and pd.notna(article['Year']):
+                                st.write(f"**Year:** {int(article['Year'])}")
+                            if 'TRL' in article and pd.notna(article['TRL']):
+                                st.write(f"**TRL:** {int(article['TRL'])}")
+                        
+                        with col_right:
+                            st.markdown("#### Technical Details")
+                            st.write("**Description:**")
+                            st.write(article['article description'])
+                            
+                            if 'Technologies' in article and article['Technologies']:
+                                st.write("**Technologies Mentioned:**")
+                                techs = article['Technologies'].split(';')
+                                for tech in techs:
+                                    if tech:
+                                        st.write(f"- {tech}")
+                        
+                        # Display any additional columns that might be present
+                        additional_cols = [col for col in article.index if col not in [
+                            'Title', 'Authors', 'rank', 'Year', 'TRL', 
+                            'article description', 'Technologies'
+                        ]]
+                        
+                        if additional_cols:
+                            st.markdown("#### Additional Information")
+                            for col in additional_cols:
+                                if pd.notna(article[col]):
+                                    st.write(f"**{col}:** {article[col]}")
         
         except Exception as e:
             st.error(f"Error: {str(e)}")
