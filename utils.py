@@ -6,21 +6,15 @@ def load_data(file) -> pd.DataFrame:
     try:
         df = pd.read_excel(file)
         
-        # Define comprehensive column mappings from Russian to English
+        # Define simplified column mappings from Russian to English
         column_mapping = {
             'Название статьи': 'Title',
-            'Заголовок': 'Title',
             'О чем статья': 'article description',
             'Аннотация': 'article description',
-            'Краткое содержание': 'article description',
-            'Соавторство': 'Authors',
             'Авторы': 'Authors',
-            'Ранжирование по тематике': 'rank',
             'Тематика': 'rank',
             'Направление': 'rank',
-            'TRL': 'TRL',
             'УГТ': 'TRL',
-            'Год': 'Year',
             'Год публикации': 'Year'
         }
         
@@ -32,7 +26,7 @@ def load_data(file) -> pd.DataFrame:
         # Define required columns (using English names)
         required_columns = ['Title', 'article description', 'Authors', 'rank']
         
-        # Validate required columns (check both Russian and English names)
+        # Validate required columns
         missing_columns = []
         for eng_col in required_columns:
             rus_cols = [k for k, v in column_mapping.items() if v == eng_col]
