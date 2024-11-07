@@ -95,15 +95,36 @@ class TextAnalyzer:
     
     def get_trl_year_correlation(self, filtered_df: pd.DataFrame) -> Dict[str, float]:
         """Calculate correlation between TRL and publication year"""
-        if 'TRL' not in filtered_df.columns or 'Year' not in filtered_df.columns:
-            return {'correlation': 0.0, 'p_value': 1.0}
-            
-        valid_data = filtered_df[['Year', 'TRL']].dropna()
-        if len(valid_data) < 2:
-            return {'correlation': 0.0, 'p_value': 1.0}
-            
-        correlation = valid_data['Year'].corr(valid_data['TRL'])
-        return {
-            'correlation': correlation,
-            'avg_trl_by_year': valid_data.groupby('Year')['TRL'].mean().to_dict()
+        result = {
+            'correlation': 0.0,
+            'avg_trl_by_year': {},
+            'has_sufficient_data': False
         }
+        
+        try:
+            # Check if required columns exist
+            if 'TRL' not in filtered_df.columns or 'Year' not in filtered_df.columns:
+                return result
+            
+            # Get valid data (non-null values)
+            valid_data = filtered_df[['Year', 'TRL']].dropna()
+            
+            # Check if we have enough data points
+            if len(valid_data) < 2:
+                return result
+            
+            # Calculate correlation
+            correlation = valid_data['Year'].corr(valid_data['TRL'])
+            result['correlation'] = correlation if not pd.isna(correlation) else 0.0
+            
+            # Calculate average TRL by year
+            avg_trl = valid_data.groupby('Year')['TRL'].mean()
+            if not avg_trl.empty:
+                result['avg_trl_by_year'] = avg_trl.to_dict()
+                result['has_sufficient_data'] = True
+            
+            return result
+            
+        except Exception as e:
+            print(f"Error calculating TRL-Year correlation: {str(e)}")
+            return result

@@ -56,11 +56,21 @@ def main():
                     # Add TRL-Year correlation analysis
                     trl_correlation = st.session_state.text_analyzer.get_trl_year_correlation(filtered_df)
                     st.subheader("TRL Analysis")
-                    st.write(f"Correlation between TRL and Publication Year: {trl_correlation['correlation']:.2f}")
-                    if trl_correlation['avg_trl_by_year']:
-                        st.write("Average TRL by Year:")
-                        for year, avg_trl in sorted(trl_correlation['avg_trl_by_year'].items()):
-                            st.write(f"- {int(year)}: {avg_trl:.1f}")
+                    
+                    # Display correlation only if we have valid data
+                    correlation_value = trl_correlation.get('correlation', 0.0)
+                    if correlation_value != 0.0:
+                        st.write(f"Correlation between TRL and Publication Year: {correlation_value:.2f}")
+                    
+                    # Check if we have sufficient data for analysis
+                    if trl_correlation.get('has_sufficient_data', False):
+                        avg_trl_by_year = trl_correlation.get('avg_trl_by_year', {})
+                        if avg_trl_by_year:
+                            st.write("Average TRL by Year:")
+                            for year, avg_trl in sorted(avg_trl_by_year.items()):
+                                st.write(f"- {int(year)}: {avg_trl:.1f}")
+                    else:
+                        st.info("Insufficient data for TRL analysis. Please ensure your dataset contains valid TRL and Year values.")
             
             with col2:
                 st.subheader("Technology Mentions Over Time")
