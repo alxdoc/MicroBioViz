@@ -35,10 +35,10 @@ def main():
                 years = st.sidebar.multiselect("Select Years", options=sorted(st.session_state.data['Year'].unique()))
             else:
                 years = []
-            topics = st.sidebar.multiselect("Select Topics", options=sorted(st.session_state.data['Topic'].unique()))
+            ranks = st.sidebar.multiselect("Select Topics", options=sorted(st.session_state.data['rank'].unique()))
             
             # Apply filters
-            filtered_df = filter_dataframe(st.session_state.data, years, topics)
+            filtered_df = filter_dataframe(st.session_state.data, years, ranks)
             
             # Main content
             col1, col2 = st.columns(2)
@@ -70,10 +70,10 @@ def main():
                 for _, article in search_results.iterrows():
                     with st.expander(f"{article['Title']}"):
                         st.write(f"**Authors:** {article['Authors']}")
-                        st.write(f"**Topic:** {article['Topic']}")
+                        st.write(f"**Topic:** {article['rank']}")
                         if 'TRL' in article and pd.notna(article['TRL']):
                             st.write(f"**TRL:** {article['TRL']}")
-                        st.write(f"**Abstract:** {article['Abstract']}")
+                        st.write(f"**Description:** {article['article description']}")
         
         except Exception as e:
             st.error(f"Error: {str(e)}")

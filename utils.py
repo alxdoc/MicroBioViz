@@ -10,14 +10,14 @@ def load_data(file) -> pd.DataFrame:
         column_mapping = {
             'Название статьи': 'Title',
             'Заголовок': 'Title',
-            'О чем статья': 'Abstract',
-            'Аннотация': 'Abstract',
-            'Краткое содержание': 'Abstract',
+            'О чем статья': 'article description',
+            'Аннотация': 'article description',
+            'Краткое содержание': 'article description',
             'Соавторство': 'Authors',
             'Авторы': 'Authors',
-            'Ранжирование по тематике': 'Topic',
-            'Тематика': 'Topic',
-            'Направление': 'Topic',
+            'Ранжирование по тематике': 'rank',
+            'Тематика': 'rank',
+            'Направление': 'rank',
             'TRL': 'TRL',
             'УГТ': 'TRL',
             'Год': 'Year',
@@ -30,7 +30,7 @@ def load_data(file) -> pd.DataFrame:
                 df = df.rename(columns={rus_col: eng_col})
         
         # Define required columns (using English names)
-        required_columns = ['Title', 'Abstract', 'Authors', 'Topic']
+        required_columns = ['Title', 'article description', 'Authors', 'rank']
         
         # Validate required columns (check both Russian and English names)
         missing_columns = []
@@ -64,7 +64,7 @@ def load_data(file) -> pd.DataFrame:
                 df.loc[~valid_mask, 'TRL'] = None
         
         # Clean text columns
-        text_columns = ['Title', 'Abstract', 'Authors', 'Topic']
+        text_columns = ['Title', 'article description', 'Authors', 'rank']
         for col in text_columns:
             if col in df.columns:
                 df[col] = df[col].fillna('').astype(str).str.strip()
@@ -82,6 +82,6 @@ def filter_dataframe(df: pd.DataFrame, years: List[int], topics: List[str]) -> p
         filtered_df = filtered_df[filtered_df['Year'].isin(years)]
     
     if topics:
-        filtered_df = filtered_df[filtered_df['Topic'].isin(topics)]
+        filtered_df = filtered_df[filtered_df['rank'].isin(topics)]
     
     return filtered_df

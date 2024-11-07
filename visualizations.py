@@ -9,7 +9,7 @@ class Visualizer:
     
     def plot_topic_distribution(self, filtered_df: pd.DataFrame) -> go.Figure:
         """Create interactive bar chart of topic distribution"""
-        topic_counts = filtered_df['Topic'].value_counts()
+        topic_counts = filtered_df['rank'].value_counts()
         
         fig = go.Figure(data=[
             go.Bar(

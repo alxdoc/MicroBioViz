@@ -17,7 +17,7 @@ class DataProcessor:
             self.df['Year'] = pd.to_numeric(self.df['Year'], errors='coerce')
         
         # Clean text columns
-        text_columns = ['Title', 'Abstract', 'Authors', 'Topic']
+        text_columns = ['Title', 'article description', 'Authors', 'rank']
         for col in text_columns:
             if col in self.df.columns:
                 self.df[col] = self.df[col].fillna('').str.strip()
@@ -26,8 +26,8 @@ class DataProcessor:
         if 'TRL' in self.df.columns:
             self.df['TRL'] = pd.to_numeric(self.df['TRL'], errors='coerce')
         
-        # Extract technology mentions from abstract
-        self.df['Technologies'] = self.df['Abstract'].apply(self._extract_technologies)
+        # Extract technology mentions from article description
+        self.df['Technologies'] = self.df['article description'].apply(self._extract_technologies)
     
     def _extract_technologies(self, text: str) -> List[str]:
         """Extract technology mentions from text"""
@@ -46,11 +46,11 @@ class DataProcessor:
     
     def get_topic_distribution(self) -> Dict[str, int]:
         """Get distribution of articles across topics"""
-        return self.df['Topic'].value_counts().to_dict()
+        return self.df['rank'].value_counts().to_dict()
     
     def get_yearly_stats(self) -> pd.DataFrame:
         """Get yearly statistics"""
-        agg_dict = {'Title': 'count', 'Topic': 'nunique'}
+        agg_dict = {'Title': 'count', 'rank': 'nunique'}
         if 'TRL' in self.df.columns:
             agg_dict['TRL'] = 'mean'
             
@@ -60,7 +60,7 @@ class DataProcessor:
         """Search articles by title or keywords"""
         mask = (
             self.df['Title'].str.contains(query, case=False, na=False) |
-            self.df['Abstract'].str.contains(query, case=False, na=False) |
-            self.df['Topic'].str.contains(query, case=False, na=False)
+            self.df['article description'].str.contains(query, case=False, na=False) |
+            self.df['rank'].str.contains(query, case=False, na=False)
         )
         return self.df[mask]

@@ -31,9 +31,9 @@ class TextAnalyzer:
         return tokens
     
     def get_common_themes(self, filtered_df: pd.DataFrame, top_n: int = 10) -> Dict[str, int]:
-        """Extract common themes from abstracts"""
-        # Combine all abstracts
-        all_text = ' '.join(filtered_df['Abstract'].fillna(''))
+        """Extract common themes from article descriptions"""
+        # Combine all article descriptions
+        all_text = ' '.join(filtered_df['article description'].fillna(''))
         
         # Process text
         tokens = self._preprocess_text(all_text)
@@ -45,10 +45,10 @@ class TextAnalyzer:
     def get_keyword_context(self, keyword: str) -> List[str]:
         """Get context around keyword mentions"""
         contexts = []
-        for abstract in self.df['Abstract'].dropna():
-            if keyword.lower() in abstract.lower():
+        for desc in self.df['article description'].dropna():
+            if keyword.lower() in desc.lower():
                 # Get the sentence containing the keyword
-                sentences = nltk.sent_tokenize(abstract)
+                sentences = nltk.sent_tokenize(desc)
                 for sentence in sentences:
                     if keyword.lower() in sentence.lower():
                         contexts.append(sentence)
