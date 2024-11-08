@@ -47,7 +47,7 @@ def main():
             filters: Dict[str, Any] = {}
             
             # Sidebar filters
-            st.sidebar.title("Filters")
+            st.sidebar.title("Filters / Фильтры")
             
             # Year filter
             years = []
@@ -63,6 +63,37 @@ def main():
             ranks = st.sidebar.multiselect("Select Topics / Выберите темы", options=valid_ranks)
             if ranks:
                 filters['rank'] = ranks
+
+            # Add categorical filters
+            categorical_cols = st.session_state.data.select_dtypes(include=['object']).columns
+            for col in categorical_cols:
+                if col not in ['rank']:  # Skip already handled columns
+                    unique_vals = sorted(st.session_state.data[col].dropna().unique())
+                    if len(unique_vals) > 0 and len(unique_vals) <= 50:  # Only show if reasonable number of options
+                        selected_vals = st.sidebar.multiselect(
+                            f"Select {col} / Выберите {col}",
+                            options=unique_vals,
+                            key=f'{col}_filter'
+                        )
+                        if selected_vals:
+                            filters[col] = selected_vals
+
+            # Add numeric range filters
+            numeric_cols = st.session_state.data.select_dtypes(include=[np.number]).columns
+            for col in numeric_cols:
+                if col not in ['Year']:  # Skip already handled columns
+                    min_val = float(st.session_state.data[col].min())
+                    max_val = float(st.session_state.data[col].max())
+                    if min_val != max_val:
+                        st.sidebar.write(f"{col} Range / Диапазон")
+                        range_vals = st.sidebar.slider(
+                            f"Select range for {col}",
+                            min_value=min_val,
+                            max_value=max_val,
+                            value=(min_val, max_val),
+                            key=f'{col}_range'
+                        )
+                        filters[col] = range_vals
 
             # Apply filters
             filtered_df = filter_dataframe(st.session_state.data, filters)
@@ -200,58 +231,60 @@ def main():
             # Scatter Plot Analysis
             st.subheader("Scatter Plot Analysis / Анализ диаграммы рассеяния")
             
-            # Get numerical and categorical columns
-            numeric_columns = filtered_df.select_dtypes(include=[np.number]).columns.tolist()
-            categorical_columns = filtered_df.select_dtypes(include=['object']).columns.tolist()
-            all_columns = numeric_columns + categorical_columns
-            
-            # Column selection
-            col1, col2 = st.columns(2)
-            with col1:
-                x_column = st.selectbox(
-                    "Select X-axis variable / Выберите переменную оси X",
-                    options=all_columns,
-                    key="scatter_x"
-                )
-            
-            with col2:
-                y_column = st.selectbox(
-                    "Select Y-axis variable / Выберите переменную оси Y",
-                    options=all_columns,
-                    key="scatter_y"
-                )
-            
-            # Optional parameters
-            col1, col2 = st.columns(2)
-            with col1:
-                color_column = st.selectbox(
-                    "Color by (optional) / Цвет по (необязательно)",
-                    options=['None'] + categorical_columns,
-                    key="scatter_color"
-                )
-            
-            with col2:
-                size_column = st.selectbox(
-                    "Size by (optional) / Размер по (необязательно)",
-                    options=['None'] + numeric_columns,
-                    key="scatter_size"
-                )
-            
-            # Create scatter plot
-            if x_column and y_column:
-                fig_scatter = create_visualization(
-                    lambda df: st.session_state.visualizer.plot_scatter(
-                        df, 
-                        x_column, 
-                        y_column,
-                        None if color_column == 'None' else color_column,
-                        None if size_column == 'None' else size_column
-                    ),
-                    filtered_df,
-                    "Error creating scatter plot / Ошибка создания диаграммы рассеяния"
-                )
-                if fig_scatter:
-                    st.plotly_chart(fig_scatter, use_container_width=True)
+            scatter_container = st.container()
+            with scatter_container:
+                # Get numerical and categorical columns
+                numeric_columns = filtered_df.select_dtypes(include=[np.number]).columns.tolist()
+                categorical_columns = filtered_df.select_dtypes(include=['object']).columns.tolist()
+                all_columns = numeric_columns + categorical_columns
+                
+                # Column selection
+                col1, col2 = st.columns(2)
+                with col1:
+                    x_column = st.selectbox(
+                        "Select X-axis variable / Выберите переменную оси X",
+                        options=all_columns,
+                        key="scatter_x"
+                    )
+                
+                with col2:
+                    y_column = st.selectbox(
+                        "Select Y-axis variable / Выберите переменную оси Y",
+                        options=all_columns,
+                        key="scatter_y"
+                    )
+                
+                # Optional parameters
+                col1, col2 = st.columns(2)
+                with col1:
+                    color_column = st.selectbox(
+                        "Color by (optional) / Цвет по (необязательно)",
+                        options=['None'] + categorical_columns,
+                        key="scatter_color"
+                    )
+                
+                with col2:
+                    size_column = st.selectbox(
+                        "Size by (optional) / Размер по (необязательно)",
+                        options=['None'] + numeric_columns,
+                        key="scatter_size"
+                    )
+                
+                # Create scatter plot
+                if x_column and y_column:
+                    fig_scatter = create_visualization(
+                        lambda df: st.session_state.visualizer.plot_scatter(
+                            df, 
+                            x_column, 
+                            y_column,
+                            None if color_column == 'None' else color_column,
+                            None if size_column == 'None' else size_column
+                        ),
+                        filtered_df,
+                        "Error creating scatter plot / Ошибка создания диаграммы рассеяния"
+                    )
+                    if fig_scatter:
+                        st.plotly_chart(fig_scatter, use_container_width=True)
         
         except Exception as e:
             st.error(f"Error: {str(e)}")

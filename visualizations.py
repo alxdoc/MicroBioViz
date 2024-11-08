@@ -79,11 +79,12 @@ class Visualizer:
                 trendline="ols" if df[x_column].dtype.kind in 'biufc' and df[y_column].dtype.kind in 'biufc' else None
             )
             
-            # Update layout
+            # Update layout with new responsive settings
             fig.update_layout(
-                height=600,
-                width=800,
-                hovermode='closest'
+                height=500,
+                margin=dict(l=50, r=50, t=50, b=50),
+                hovermode='closest',
+                template='plotly_white'
             )
             
             # Enhanced hover template
@@ -108,7 +109,6 @@ class Visualizer:
                 f"Error creating scatter plot / Ошибка создания диаграммы рассеяния: {str(e)}"
             )
 
-    # [Previous methods remain unchanged]
     def plot_categorical_tree(self, df: pd.DataFrame, category_column: str) -> go.Figure:
         try:
             if df.empty or category_column not in df.columns:
