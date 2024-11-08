@@ -72,7 +72,8 @@ def main():
                 )
                 if fig_topics:
                     st.plotly_chart(fig_topics, use_container_width=True)
-                
+            
+            with col2:
                 if 'TRL' in filtered_df.columns:
                     st.subheader("TRL Distribution / Распределение УГТ")
                     fig_trl = create_visualization(
@@ -82,93 +83,75 @@ def main():
                     )
                     if fig_trl:
                         st.plotly_chart(fig_trl, use_container_width=True)
-                    
-                    # Add TRL-Year correlation analysis
-                    try:
-                        trl_correlation = st.session_state.text_analyzer.get_trl_year_correlation(filtered_df)
-                        st.subheader("TRL Analysis / Анализ УГТ")
-                        
-                        correlation_value = trl_correlation.get('correlation', 0.0)
-                        if correlation_value != 0.0:
-                            st.write(f"Correlation between TRL and Publication Year / "
-                                   f"Корреляция между УГТ и годом публикации: {correlation_value:.2f}")
-                        
-                        if trl_correlation.get('has_sufficient_data', False):
-                            avg_trl_by_year = trl_correlation.get('avg_trl_by_year', {})
-                            if avg_trl_by_year:
-                                st.write("Average TRL by Year / Средний УГТ по годам:")
-                                for year, avg_trl in sorted(avg_trl_by_year.items()):
-                                    st.write(f"- {int(year)}: {avg_trl:.1f}")
-                        else:
-                            st.info("Insufficient data for TRL analysis / Недостаточно данных для анализа УГТ")
-                    except Exception as e:
-                        st.error(f"Error in TRL analysis / Ошибка в анализе УГТ: {str(e)}")
             
-            with col2:
-                st.subheader("Technology Mentions Over Time / Упоминания технологий с течением времени")
-                fig_tech = create_visualization(
-                    st.session_state.visualizer.plot_technology_trends,
-                    filtered_df,
-                    "Error creating technology trends / Ошибка создания трендов технологий"
-                )
-                if fig_tech:
-                    st.plotly_chart(fig_tech, use_container_width=True)
-                
-                # Add word cloud visualization
-                st.subheader("Theme Word Cloud / Облако слов тем")
-                try:
-                    themes = st.session_state.text_analyzer.get_common_themes(filtered_df)
-                    if themes:
-                        fig_cloud = create_visualization(
-                            st.session_state.visualizer.plot_word_cloud,
-                            themes,
-                            "Error creating word cloud / Ошибка создания облака слов"
-                        )
-                        if fig_cloud:
-                            st.plotly_chart(fig_cloud, use_container_width=True)
-                    else:
-                        st.info("No themes available for visualization / Нет тем для визуализации")
-                except Exception as e:
-                    st.error(f"Error processing themes / Ошибка обработки тем: {str(e)}")
+            # Advanced Analysis Section
+            st.header("Advanced Analysis / Расширенный анализ")
             
-            # Detailed Analysis Section
-            st.header("Detailed Analysis / Детальный анализ")
-            
-            # Numerical Data Analysis
-            st.subheader("Numerical Data Analysis / Анализ числовых данных")
-            numerical_columns = ['Temperature', 'Duration', 'Pressure', 'TRL']
-            selected_numerical = st.multiselect(
-                "Select numerical variables to analyze / Выберите числовые переменные для анализа",
-                [col for col in numerical_columns if col in filtered_df.columns]
-            )
-            
-            if selected_numerical:
-                for column in selected_numerical:
-                    fig_num = create_visualization(
-                        lambda df: st.session_state.visualizer.plot_numerical_distribution(df, column),
-                        filtered_df,
-                        f"Error analyzing {column} / Ошибка анализа {column}"
-                    )
-                    if fig_num:
-                        st.plotly_chart(fig_num, use_container_width=True)
-            
-            # Categorical Data Analysis
+            # Categorical Data Analysis with Hierarchical Visualization
             st.subheader("Categorical Data Analysis / Анализ категориальных данных")
-            categorical_columns = ['Method', 'Active Agent', 'Environmental Safety', 'Economic Efficiency']
-            selected_categorical = st.multiselect(
-                "Select categorical variables to analyze / Выберите категориальные переменные для анализа",
-                [col for col in categorical_columns if col in filtered_df.columns]
-            )
+            categorical_columns = ['Method', 'Active Agent', 'Environmental Safety', 'Economic Efficiency', 'rank']
             
+            # Add sorting options
+            sort_options = {
+                'Frequency (High to Low)': 'frequency_desc',
+                'Frequency (Low to High)': 'frequency_asc',
+                'Alphabetical (A-Z)': 'alpha_asc',
+                'Alphabetical (Z-A)': 'alpha_desc'
+            }
+            
+            col1, col2 = st.columns([2, 1])
+            with col1:
+                selected_categorical = st.multiselect(
+                    "Select categorical variables to analyze / Выберите категориальные переменные для анализа",
+                    [col for col in categorical_columns if col in filtered_df.columns]
+                )
+            with col2:
+                sort_method = st.selectbox(
+                    "Sort by / Сортировать по",
+                    options=list(sort_options.keys()),
+                    index=0
+                )
+
             if selected_categorical:
                 for column in selected_categorical:
-                    fig_cat = create_visualization(
-                        lambda df: st.session_state.visualizer.plot_categorical_distribution(df, column),
-                        filtered_df,
+                    # Create a copy of the dataframe for sorting
+                    df_sorted = filtered_df.copy()
+                    
+                    # Apply sorting based on selection
+                    sort_key = sort_options[sort_method]
+                    if sort_key == 'frequency_desc':
+                        df_sorted[column] = pd.Categorical(
+                            df_sorted[column],
+                            categories=df_sorted[column].value_counts().index,
+                            ordered=True
+                        )
+                    elif sort_key == 'frequency_asc':
+                        df_sorted[column] = pd.Categorical(
+                            df_sorted[column],
+                            categories=df_sorted[column].value_counts().index[::-1],
+                            ordered=True
+                        )
+                    elif sort_key == 'alpha_asc':
+                        df_sorted[column] = pd.Categorical(
+                            df_sorted[column],
+                            categories=sorted(df_sorted[column].unique()),
+                            ordered=True
+                        )
+                    else:  # alpha_desc
+                        df_sorted[column] = pd.Categorical(
+                            df_sorted[column],
+                            categories=sorted(df_sorted[column].unique(), reverse=True),
+                            ordered=True
+                        )
+                    
+                    # Create hierarchical visualization
+                    fig_tree = create_visualization(
+                        lambda df: st.session_state.visualizer.plot_categorical_tree(df, column),
+                        df_sorted,
                         f"Error analyzing {column} / Ошибка анализа {column}"
                     )
-                    if fig_cat:
-                        st.plotly_chart(fig_cat, use_container_width=True)
+                    if fig_tree:
+                        st.plotly_chart(fig_tree, use_container_width=True)
             
             # Text Analysis
             st.subheader("Text Analysis / Анализ текста")
@@ -190,149 +173,18 @@ def main():
             
             # Correlation Analysis
             st.subheader("Correlation Analysis / Корреляционный анализ")
-            if st.checkbox("Show correlation matrix / Показать корреляционную матрицу"):
-                numeric_cols = filtered_df.select_dtypes(include=[np.number]).columns.tolist()
-                if len(numeric_cols) >= 2:
-                    fig_corr = create_visualization(
-                        lambda df: st.session_state.visualizer.plot_correlation_matrix(df, numeric_cols),
-                        filtered_df,
-                        "Error creating correlation matrix / Ошибка создания корреляционной матрицы"
-                    )
-                    if fig_corr:
-                        st.plotly_chart(fig_corr, use_container_width=True)
-                else:
-                    st.info("Insufficient numerical variables for correlation analysis / "
-                           "Недостаточно числовых переменных для корреляционного анализа")
-            
-            # Relationship Analysis
-            st.subheader("Relationship Analysis / Анализ зависимостей")
-            col1, col2 = st.columns(2)
-            with col1:
-                x_var = st.selectbox(
-                    "Select X variable / Выберите переменную X",
-                    filtered_df.select_dtypes(include=[np.number]).columns
-                )
-            with col2:
-                y_var = st.selectbox(
-                    "Select Y variable / Выберите переменную Y",
-                    filtered_df.select_dtypes(include=[np.number]).columns
-                )
-            
-            if x_var and y_var:
-                fig_rel = create_visualization(
-                    lambda df: st.session_state.visualizer.plot_relationship(df, x_var, y_var),
+            numeric_cols = filtered_df.select_dtypes(include=[np.number]).columns.tolist()
+            if len(numeric_cols) >= 2:
+                fig_corr = create_visualization(
+                    lambda df: st.session_state.visualizer.plot_correlation_matrix(df, numeric_cols),
                     filtered_df,
-                    "Error creating relationship plot / Ошибка создания графика зависимости"
+                    "Error creating correlation matrix / Ошибка создания корреляционной матрицы"
                 )
-                if fig_rel:
-                    st.plotly_chart(fig_rel, use_container_width=True)
-            
-            # Advanced Analysis Section
-            st.header("Advanced Analysis / Расширенный анализ")
-            
-            # Relationships Analysis section
-            st.subheader("Relationships Analysis / Анализ взаимосвязей")
-            if st.checkbox("Show Relationship Analysis / Показать анализ взаимосвязей"):
-                try:
-                    with st.spinner("Analyzing relationships / Анализ взаимосвязей..."):
-                        relationships = st.session_state.visualizer.plot_data_relationships(filtered_df)
-                        
-                        if relationships.get('error'):
-                            st.error(relationships['error'])
-                        else:
-                            # Display insights
-                            if relationships['insights']:
-                                st.write("Key Findings / Ключевые результаты:")
-                                for insight in relationships['insights']:
-                                    st.info(insight)
-                            
-                            # Display figures
-                            if relationships['figures']:
-                                for fig in relationships['figures']:
-                                    st.plotly_chart(fig, use_container_width=True)
-                            else:
-                                st.info(
-                                    "No significant relationships found / "
-                                    "Значимых взаимосвязей не обнаружено"
-                                )
-                except Exception as e:
-                    st.error(
-                        f"Error in relationship analysis / "
-                        f"Ошибка в анализе взаимосвязей: {str(e)}"
-                    )
-            
-            # Technology Network Analysis
-            st.subheader("Technology Co-occurrence Network / Сеть совместного появления технологий")
-            try:
-                nodes, edges = st.session_state.text_analyzer.get_technology_network(filtered_df)
-                if nodes and edges:
-                    fig_network = create_visualization(
-                        lambda df: st.session_state.visualizer.plot_tech_network(nodes, edges),
-                        filtered_df,
-                        "Error creating network visualization / Ошибка создания визуализации сети"
-                    )
-                    if fig_network:
-                        st.plotly_chart(fig_network, use_container_width=True)
-                else:
-                    st.info("Not enough technology co-occurrence data / Недостаточно данных о совместном появлении технологий")
-            except Exception as e:
-                st.error(f"Error in network analysis / Ошибка в анализе сети: {str(e)}")
-            
-            # Topic Trends Analysis
-            st.subheader("Topic Trends Over Time / Тренды тем с течением времени")
-            try:
-                topic_trends = st.session_state.text_analyzer.analyze_topic_trends(filtered_df)
-                if not topic_trends.empty:
-                    fig_trends = create_visualization(
-                        st.session_state.visualizer.plot_topic_trends,
-                        topic_trends,
-                        "Error creating topic trends / Ошибка создания трендов тем"
-                    )
-                    if fig_trends:
-                        st.plotly_chart(fig_trends, use_container_width=True)
-                else:
-                    st.info("Not enough temporal data to analyze topic trends / "
-                           "Недостаточно временных данных для анализа трендов тем")
-            except Exception as e:
-                st.error(f"Error in topic trends analysis / Ошибка в анализе трендов тем: {str(e)}")
-            
-            # Article Search and Details
-            st.header("Article Search / Поиск статей")
-            search_term = st.text_input("Search by title or keywords / Поиск по названию или ключевым словам")
-            if search_term:
-                try:
-                    search_results = st.session_state.processor.search_articles(search_term)
-                    if search_results.empty:
-                        st.info("No articles found matching the search criteria / "
-                               "Не найдено статей, соответствующих критериям поиска")
-                    else:
-                        for _, article in search_results.iterrows():
-                            with st.expander(f"{article['Title']}"):
-                                col_left, col_right = st.columns(2)
-                                
-                                with col_left:
-                                    st.markdown("#### Basic Information / Основная информация")
-                                    st.write(f"**Title / Название:** {article['Title']}")
-                                    st.write(f"**Authors / Авторы:** {article['Authors']}")
-                                    st.write(f"**Topic / Тема:** {article['rank']}")
-                                    if 'Year' in article and pd.notna(article['Year']):
-                                        st.write(f"**Year / Год:** {int(article['Year'])}")
-                                    if 'TRL' in article and pd.notna(article['TRL']):
-                                        st.write(f"**TRL / УГТ:** {int(article['TRL'])}")
-                                
-                                with col_right:
-                                    st.markdown("#### Technical Details / Технические детали")
-                                    st.write("**Description / Описание:**")
-                                    st.write(article['article description'])
-                                    
-                                    if 'Technologies' in article and article['Technologies']:
-                                        st.write("**Technologies Mentioned / Упомянутые технологии:**")
-                                        techs = article['Technologies'].split(';')
-                                        for tech in techs:
-                                            if tech:
-                                                st.write(f"- {tech}")
-                except Exception as e:
-                    st.error(f"Error in article search / Ошибка в поиске статей: {str(e)}")
+                if fig_corr:
+                    st.plotly_chart(fig_corr, use_container_width=True)
+            else:
+                st.info("Insufficient numerical variables for correlation analysis / "
+                       "Недостаточно числовых переменных для корреляционного анализа")
         
         except Exception as e:
             st.error(f"Error: {str(e)}")

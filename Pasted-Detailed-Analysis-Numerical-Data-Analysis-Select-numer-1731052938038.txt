@@ -1,0 +1,46 @@
+Detailed Analysis / Детальный анализ
+Numerical Data Analysis / Анализ числовых данных
+Select numerical variables to analyze / Выберите числовые переменные для анализа
+
+Temperature
+Duration
+Pressure
+TRL
+Error analyzing Temperature / Ошибка анализа Temperature: 'Visualizer' object has no attribute 'plot_numerical_distribution'
+
+Error analyzing Duration / Ошибка анализа Duration: 'Visualizer' object has no attribute 'plot_numerical_distribution'
+
+Error analyzing Pressure / Ошибка анализа Pressure: 'Visualizer' object has no attribute 'plot_numerical_distribution'
+
+Error analyzing TRL / Ошибка анализа TRL: 'Visualizer' object has no attribute 'plot_numerical_distribution'
+
+Categorical Data Analysis / Анализ категориальных данных
+Select categorical variables to analyze / Выберите категориальные переменные для анализа
+
+Method
+Active Agent
+Environmental Safety
+Economic Efficiency
+Error analyzing Method / Ошибка анализа Method: 'Visualizer' object has no attribute 'plot_categorical_distribution'
+
+Error analyzing Active Agent / Ошибка анализа Active Agent: 'Visualizer' object has no attribute 'plot_categorical_distribution'
+
+Error analyzing Environmental Safety / Ошибка анализа Environmental Safety: 'Visualizer' object has no attribute 'plot_categorical_distribution'
+
+Error analyzing Economic Efficiency / Ошибка анализа Economic Efficiency: 'Visualizer' object has no attribute 'plot_categorical_distribution'
+
+Text Analysis / Анализ текста
+Select text fields to analyze / Выберите текстовые поля для анализа
+
+Conclusions
+Results
+article description
+Error analyzing Conclusions / Ошибка анализа Conclusions: 'Visualizer' object has no attribute 'plot_text_analysis'
+
+Error analyzing Results / Ошибка анализа Results: 'Visualizer' object has no attribute 'plot_text_analysis'
+
+Error analyzing article description / Ошибка анализа article description: 'Visualizer' object has no attribute 'plot_text_analysis'
+
+Correlation Analysis / Корреляционный анализ
+
+Error creating correlation matrix / Ошибка создания корреляционной матрицы: 'Visualizer' object has no attribute 'plot_correlation_matrix'
