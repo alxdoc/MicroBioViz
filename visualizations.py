@@ -149,6 +149,81 @@ class Visualizer:
                 f"Error creating TRL distribution / Ошибка создания распределения УГТ: {str(e)}"
             )
 
+    def plot_technology_trends(self, df: pd.DataFrame) -> go.Figure:
+        try:
+            if df.empty or 'Technologies' not in df.columns or 'Year' not in df.columns:
+                return self._create_empty_figure(
+                    "No technology trend data available / Нет данных о трендах технологий"
+                )
+            
+            # Get valid data
+            valid_data = df[['Technologies', 'Year']].dropna()
+            if valid_data.empty:
+                return self._create_empty_figure(
+                    "No valid technology trend data / Нет действительных данных о трендах"
+                )
+            
+            # Process technology mentions by year
+            tech_trends = {}
+            years = sorted(valid_data['Year'].unique())
+            
+            for _, row in valid_data.iterrows():
+                year = int(row['Year'])
+                techs = row['Technologies'].split(';')
+                if year not in tech_trends:
+                    tech_trends[year] = {}
+                for tech in techs:
+                    if tech:  # Skip empty strings
+                        tech_trends[year][tech] = tech_trends[year].get(tech, 0) + 1
+            
+            if not tech_trends:
+                return self._create_empty_figure(
+                    "No technology mentions found / Упоминания технологий не найдены"
+                )
+            
+            # Create figure
+            fig = go.Figure()
+            
+            # Add trace for each technology
+            all_techs = set()
+            for year_data in tech_trends.values():
+                all_techs.update(year_data.keys())
+            
+            for tech in sorted(all_techs):
+                yearly_counts = [tech_trends.get(year, {}).get(tech, 0) for year in years]
+                fig.add_trace(
+                    go.Scatter(
+                        x=years,
+                        y=yearly_counts,
+                        name=tech,
+                        mode='lines+markers',
+                        hovertemplate=(
+                            "<b>Year:</b> %{x}<br>"
+                            "<b>Mentions:</b> %{y}<br>"
+                            "<b>Technology:</b> " + tech +
+                            "<extra></extra>"
+                        )
+                    )
+                )
+            
+            # Update layout
+            fig.update_layout(
+                title="Technology Mentions Over Time / Упоминания технологий с течением времени",
+                xaxis_title="Year / Год",
+                yaxis_title="Number of Mentions / Количество упоминаний",
+                hovermode='x unified',
+                height=400,
+                showlegend=True,
+                legend_title="Technologies / Технологии"
+            )
+            
+            return fig
+            
+        except Exception as e:
+            return self._create_empty_figure(
+                f"Error creating technology trends / Ошибка создания трендов: {str(e)}"
+            )
+
     def plot_data_relationships(self, df: pd.DataFrame) -> Dict[str, Any]:
         """
         Analyze and visualize relationships between variables in the dataset.
