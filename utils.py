@@ -1,5 +1,5 @@
 import pandas as pd
-from typing import List
+from typing import List, Dict, Any
 
 def load_data(file) -> pd.DataFrame:
     """Load and validate Excel file"""
@@ -68,14 +68,18 @@ def load_data(file) -> pd.DataFrame:
     except Exception as e:
         raise Exception(f"Error loading data: {str(e)}")
 
-def filter_dataframe(df: pd.DataFrame, years: List[int], topics: List[str]) -> pd.DataFrame:
-    """Filter dataframe based on selected years and topics"""
+def filter_dataframe(df: pd.DataFrame, filters: Dict[str, Any]) -> pd.DataFrame:
+    """Filter dataframe based on selected filters"""
     filtered_df = df.copy()
     
-    if years:
-        filtered_df = filtered_df[filtered_df['Year'].isin(years)]
-    
-    if topics:
-        filtered_df = filtered_df[filtered_df['rank'].isin(topics)]
+    for column, filter_value in filters.items():
+        if filter_value:
+            if isinstance(filter_value, list):
+                filtered_df = filtered_df[filtered_df[column].isin(filter_value)]
+            elif isinstance(filter_value, tuple) and len(filter_value) == 2:
+                filtered_df = filtered_df[
+                    (filtered_df[column] >= filter_value[0]) & 
+                    (filtered_df[column] <= filter_value[1])
+                ]
     
     return filtered_df

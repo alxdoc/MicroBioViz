@@ -5,6 +5,7 @@ from data_processor import DataProcessor
 from visualizations import Visualizer
 from text_analyzer import TextAnalyzer
 from utils import load_data, filter_dataframe
+from typing import Dict, Any
 
 st.set_page_config(page_title="Microbiology Articles Dashboard", layout="wide")
 
@@ -42,19 +43,29 @@ def main():
                 st.session_state.visualizer = Visualizer(df)
                 st.session_state.text_analyzer = TextAnalyzer(df)
             
+            # Initialize filters dictionary
+            filters: Dict[str, Any] = {}
+            
             # Sidebar filters
             st.sidebar.title("Filters")
+            
+            # Year filter
             years = []
             if 'Year' in st.session_state.data.columns:
                 valid_years = sorted(st.session_state.data['Year'].dropna().unique())
                 if valid_years:
                     years = st.sidebar.multiselect("Select Years / Выберите годы", options=valid_years)
+                    if years:
+                        filters['Year'] = years
             
+            # Topic filter
             valid_ranks = sorted(st.session_state.data['rank'].dropna().unique())
             ranks = st.sidebar.multiselect("Select Topics / Выберите темы", options=valid_ranks)
-            
+            if ranks:
+                filters['rank'] = ranks
+
             # Apply filters
-            filtered_df = filter_dataframe(st.session_state.data, years, ranks)
+            filtered_df = filter_dataframe(st.session_state.data, filters)
             
             if filtered_df.empty:
                 st.warning("No data matches the selected filters / Нет данных, соответствующих выбранным фильтрам")
