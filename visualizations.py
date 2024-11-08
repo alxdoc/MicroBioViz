@@ -168,6 +168,70 @@ class Visualizer:
                 f"Error creating TRL distribution / Ошибка создания распределения УГТ: {str(e)}"
             )
 
+    def plot_technology_trends(self, df: pd.DataFrame) -> go.Figure:
+        try:
+            validation = self._validate_dataframe(df, ['Technologies', 'Year'])
+            if not validation['valid']:
+                return self._create_empty_figure(validation['message'])
+            
+            # Get valid data
+            valid_data = df[['Technologies', 'Year']].dropna()
+            if valid_data.empty:
+                return self._create_empty_figure(
+                    "No technology trends data available / Нет данных о трендах технологий"
+                )
+            
+            # Split technologies and create yearly counts
+            tech_by_year = {}
+            for _, row in valid_data.iterrows():
+                year = int(row['Year'])
+                technologies = row['Technologies'].split(';')
+                if year not in tech_by_year:
+                    tech_by_year[year] = {}
+                for tech in technologies:
+                    if tech:  # Skip empty strings
+                        tech_by_year[year][tech] = tech_by_year[year].get(tech, 0) + 1
+            
+            if not tech_by_year:
+                return self._create_empty_figure(
+                    "No valid technology trends data / Нет действительных данных о трендах технологий"
+                )
+            
+            # Create traces for each technology
+            fig = go.Figure()
+            all_years = sorted(tech_by_year.keys())
+            all_technologies = set()
+            for year_data in tech_by_year.values():
+                all_technologies.update(year_data.keys())
+            
+            for tech in sorted(all_technologies):
+                yearly_counts = [tech_by_year[year].get(tech, 0) for year in all_years]
+                fig.add_trace(
+                    go.Scatter(
+                        x=all_years,
+                        y=yearly_counts,
+                        name=tech,
+                        mode='lines+markers'
+                    )
+                )
+            
+            # Update layout
+            fig.update_layout(
+                title="Technology Mentions Over Time / Упоминания технологий с течением времени",
+                xaxis_title="Year / Год",
+                yaxis_title="Number of Mentions / Количество упоминаний",
+                height=400,
+                hovermode='x unified',
+                showlegend=True
+            )
+            
+            return fig
+            
+        except Exception as e:
+            return self._create_empty_figure(
+                f"Error creating technology trends / Ошибка создания трендов технологий: {str(e)}"
+            )
+
     def plot_numerical_distribution(self, df: pd.DataFrame, column: str) -> go.Figure:
         """Create boxplot and histogram for numerical data"""
         try:
