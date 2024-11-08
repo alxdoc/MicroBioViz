@@ -98,6 +98,57 @@ class Visualizer:
                 f"Error creating topic distribution / Ошибка создания распределения: {str(e)}"
             )
 
+    def plot_trl_distribution(self, df: pd.DataFrame) -> go.Figure:
+        try:
+            if df.empty or 'TRL' not in df.columns:
+                return self._create_empty_figure(
+                    "No TRL data available / Нет данных УГТ"
+                )
+            
+            # Remove null values and convert to integers
+            trl_data = pd.to_numeric(df['TRL'], errors='coerce').dropna()
+            
+            if trl_data.empty:
+                return self._create_empty_figure(
+                    "No valid TRL data / Нет действительных данных УГТ"
+                )
+            
+            # Convert to integers and get value counts
+            trl_counts = trl_data.astype(int).value_counts().sort_index()
+            
+            # Create bar chart
+            fig = px.bar(
+                x=trl_counts.index,
+                y=trl_counts.values,
+                labels={
+                    'x': 'TRL Level / Уровень УГТ',
+                    'y': 'Number of Articles / Количество статей'
+                },
+                title='TRL Distribution / Распределение УГТ'
+            )
+            
+            # Update layout
+            fig.update_layout(
+                height=400,
+                showlegend=False,
+                hovermode='x unified',
+                xaxis_tickmode='linear',
+                xaxis_tick0=1,
+                xaxis_dtick=1
+            )
+            
+            # Add hover template
+            fig.update_traces(
+                hovertemplate="<b>TRL:</b> %{x}<br><b>Articles:</b> %{y}<extra></extra>"
+            )
+            
+            return fig
+            
+        except Exception as e:
+            return self._create_empty_figure(
+                f"Error creating TRL distribution / Ошибка создания распределения УГТ: {str(e)}"
+            )
+
     def plot_data_relationships(self, df: pd.DataFrame) -> Dict[str, Any]:
         """
         Analyze and visualize relationships between variables in the dataset.
