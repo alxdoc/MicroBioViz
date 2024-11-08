@@ -232,6 +232,74 @@ class Visualizer:
                 f"Error creating technology trends / Ошибка создания трендов технологий: {str(e)}"
             )
 
+    def plot_word_cloud(self, word_frequencies: Dict[str, int]) -> go.Figure:
+        try:
+            if not word_frequencies or not isinstance(word_frequencies, dict):
+                return self._create_empty_figure(
+                    "No word frequency data available / Нет данных о частоте слов"
+                )
+            
+            # Remove any error placeholder entries
+            word_frequencies = {k: v for k, v in word_frequencies.items() 
+                              if k not in ['error', 'no data']}
+            
+            if not word_frequencies:
+                return self._create_empty_figure(
+                    "No valid words for cloud / Нет действительных слов для облака"
+                )
+            
+            # Calculate positions for words in a circular layout
+            words = list(word_frequencies.keys())
+            frequencies = list(word_frequencies.values())
+            max_freq = max(frequencies)
+            
+            # Normalize frequencies for sizing
+            sizes = [30 * (freq / max_freq) + 10 for freq in frequencies]
+            
+            # Create scatter plot with text
+            fig = go.Figure()
+            
+            # Calculate positions in a spiral
+            n_words = len(words)
+            radius = np.linspace(0, 2, n_words)
+            theta = np.linspace(0, 8*np.pi, n_words)
+            
+            x = radius * np.cos(theta)
+            y = radius * np.sin(theta)
+            
+            # Add words as scatter points with text
+            for i, (word, size) in enumerate(zip(words, sizes)):
+                fig.add_trace(go.Scatter(
+                    x=[x[i]],
+                    y=[y[i]],
+                    mode='text',
+                    text=[word],
+                    textfont=dict(
+                        size=size,
+                        color=px.colors.qualitative.Set3[i % len(px.colors.qualitative.Set3)]
+                    ),
+                    hoverinfo='text',
+                    hovertext=f'{word}: {word_frequencies[word]}'
+                ))
+            
+            # Update layout
+            fig.update_layout(
+                title="Theme Word Cloud / Облако слов тем",
+                showlegend=False,
+                xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+                yaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+                hovermode='closest',
+                width=800,
+                height=600
+            )
+            
+            return fig
+            
+        except Exception as e:
+            return self._create_empty_figure(
+                f"Error creating word cloud / Ошибка создания облака слов: {str(e)}"
+            )
+
     def plot_numerical_distribution(self, df: pd.DataFrame, column: str) -> go.Figure:
         """Create boxplot and histogram for numerical data"""
         try:
@@ -416,8 +484,7 @@ class Visualizer:
                         y=j,
                         text=f"{correlation_matrix.iloc[i, j]:.2f}",
                         showarrow=False,
-                        font_size=10,
-                        font_color='black'
+                        font=dict(color="black")
                     )
             
             return fig
@@ -428,29 +495,30 @@ class Visualizer:
             )
 
     def plot_relationship(self, df: pd.DataFrame, x_col: str, y_col: str) -> go.Figure:
-        """Create scatter plot showing relationship between two variables"""
+        """Create scatter plot with trend line for two numerical variables"""
         try:
             validation = self._validate_dataframe(df, [x_col, y_col])
             if not validation['valid']:
                 return self._create_empty_figure(validation['message'])
             
-            # Convert to numeric and drop invalid values
+            # Convert to numeric and remove null values
             x_data = pd.to_numeric(df[x_col], errors='coerce')
             y_data = pd.to_numeric(df[y_col], errors='coerce')
-            
-            valid_mask = x_data.notna() & y_data.notna()
+            valid_mask = ~(x_data.isna() | y_data.isna())
             x_data = x_data[valid_mask]
             y_data = y_data[valid_mask]
             
-            if len(x_data) == 0:
+            if len(x_data) < 2:
                 return self._create_empty_figure(
-                    "No valid data for relationship plot / "
-                    "Нет действительных данных для графика зависимости"
+                    f"Insufficient valid data points for {x_col} and {y_col} / "
+                    f"Недостаточно действительных точек данных для {x_col} и {y_col}"
                 )
             
+            # Create scatter plot with trend line
             fig = px.scatter(
                 x=x_data,
                 y=y_data,
+                trendline="ols",
                 labels={
                     'x': f"{x_col}",
                     'y': f"{y_col}"
@@ -459,19 +527,10 @@ class Visualizer:
                       f"Зависимость между {x_col} и {y_col}"
             )
             
-            # Add trend line
-            fig.add_trace(
-                go.Scatter(
-                    x=x_data,
-                    y=np.poly1d(np.polyfit(x_data, y_data, 1))(x_data),
-                    name="Trend Line / Линия тренда",
-                    mode='lines',
-                    line=dict(color='red', dash='dash')
-                )
-            )
-            
+            # Update layout
             fig.update_layout(
-                height=400,
+                height=500,
+                showlegend=True,
                 hovermode='closest'
             )
             
