@@ -74,6 +74,50 @@ class Visualizer:
                 
         return validation
 
+    def plot_topic_distribution(self, df: pd.DataFrame) -> go.Figure:
+        try:
+            validation = self._validate_dataframe(df, ['rank'])
+            if not validation['valid']:
+                return self._create_empty_figure(validation['message'])
+            
+            # Get topic distribution
+            topic_counts = df['rank'].value_counts()
+            
+            if topic_counts.empty:
+                return self._create_empty_figure(
+                    "No topic data available / Нет данных о темах"
+                )
+            
+            # Create bar chart
+            fig = px.bar(
+                x=topic_counts.index,
+                y=topic_counts.values,
+                labels={
+                    'x': 'Topic / Тема',
+                    'y': 'Number of Articles / Количество статей'
+                },
+                title='Article Distribution by Topic / Распределение статей по темам'
+            )
+            
+            # Update layout
+            fig.update_layout(
+                height=400,
+                showlegend=False,
+                hovermode='x unified'
+            )
+            
+            # Add hover template
+            fig.update_traces(
+                hovertemplate="<b>Topic:</b> %{x}<br><b>Articles:</b> %{y}<extra></extra>"
+            )
+            
+            return fig
+            
+        except Exception as e:
+            return self._create_empty_figure(
+                f"Error creating topic distribution / Ошибка создания распределения тем: {str(e)}"
+            )
+
     def plot_numerical_distribution(self, df: pd.DataFrame, column: str) -> go.Figure:
         """Create boxplot and histogram for numerical data"""
         try:
