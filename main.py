@@ -1,6 +1,6 @@
 import streamlit as st
-import pandas as pd
 import numpy as np
+import pandas as pd
 from data_processor import DataProcessor
 from visualizations import Visualizer
 from text_analyzer import TextAnalyzer
@@ -229,6 +229,37 @@ def main():
             
             # Advanced Analysis Section
             st.header("Advanced Analysis / Расширенный анализ")
+            
+            # Relationships Analysis section
+            st.subheader("Relationships Analysis / Анализ взаимосвязей")
+            if st.checkbox("Show Relationship Analysis / Показать анализ взаимосвязей"):
+                try:
+                    with st.spinner("Analyzing relationships / Анализ взаимосвязей..."):
+                        relationships = st.session_state.visualizer.plot_data_relationships(filtered_df)
+                        
+                        if relationships.get('error'):
+                            st.error(relationships['error'])
+                        else:
+                            # Display insights
+                            if relationships['insights']:
+                                st.write("Key Findings / Ключевые результаты:")
+                                for insight in relationships['insights']:
+                                    st.info(insight)
+                            
+                            # Display figures
+                            if relationships['figures']:
+                                for fig in relationships['figures']:
+                                    st.plotly_chart(fig, use_container_width=True)
+                            else:
+                                st.info(
+                                    "No significant relationships found / "
+                                    "Значимых взаимосвязей не обнаружено"
+                                )
+                except Exception as e:
+                    st.error(
+                        f"Error in relationship analysis / "
+                        f"Ошибка в анализе взаимосвязей: {str(e)}"
+                    )
             
             # Technology Network Analysis
             st.subheader("Technology Co-occurrence Network / Сеть совместного появления технологий")
