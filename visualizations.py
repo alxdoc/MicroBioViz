@@ -30,7 +30,73 @@ class Visualizer:
             }
         }
 
-    # ... [previous methods remain unchanged] ...
+    def _get_bilingual_message(self, key: str, *args) -> str:
+        """Get bilingual error message"""
+        en_msg = self.error_messages[key]['en'].format(*args)
+        ru_msg = self.error_messages[key]['ru'].format(*args)
+        return f"{en_msg} / {ru_msg}"
+
+    def _create_empty_figure(self, message: str) -> go.Figure:
+        """Create an empty figure with a bilingual message"""
+        fig = go.Figure()
+        fig.add_annotation(
+            text=message,
+            xref="paper", yref="paper",
+            x=0.5, y=0.5,
+            showarrow=False,
+            font=dict(size=14)
+        )
+        fig.update_layout(
+            showlegend=False,
+            xaxis={'showgrid': False, 'zeroline': False, 'visible': False},
+            yaxis={'showgrid': False, 'zeroline': False, 'visible': False}
+        )
+        return fig
+
+    def plot_topic_distribution(self, df: pd.DataFrame) -> go.Figure:
+        try:
+            if df.empty or 'rank' not in df.columns:
+                return self._create_empty_figure(
+                    "No topic data available / Нет данных о темах"
+                )
+
+            # Calculate topic distribution
+            topic_counts = df['rank'].value_counts()
+            
+            if topic_counts.empty:
+                return self._create_empty_figure(
+                    "No valid topic data / Нет действительных данных о темах"
+                )
+
+            # Create bar chart
+            fig = px.bar(
+                x=topic_counts.index,
+                y=topic_counts.values,
+                labels={
+                    'x': 'Topic / Тема',
+                    'y': 'Number of Articles / Количество статей'
+                },
+                title='Article Distribution by Topic / Распределение статей по темам'
+            )
+
+            # Update layout
+            fig.update_layout(
+                height=400,
+                showlegend=False,
+                hovermode='x unified'
+            )
+
+            # Add hover template
+            fig.update_traces(
+                hovertemplate="<b>Topic:</b> %{x}<br><b>Articles:</b> %{y}<extra></extra>"
+            )
+
+            return fig
+
+        except Exception as e:
+            return self._create_empty_figure(
+                f"Error creating topic distribution / Ошибка создания распределения: {str(e)}"
+            )
 
     def plot_data_relationships(self, df: pd.DataFrame) -> Dict[str, Any]:
         """
@@ -177,5 +243,3 @@ class Visualizer:
                 'figures': [],
                 'insights': []
             }
-
-    # ... [rest of the class methods remain unchanged] ...
