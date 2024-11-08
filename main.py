@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import numpy as np
 from data_processor import DataProcessor
 from visualizations import Visualizer
 from text_analyzer import TextAnalyzer
@@ -40,7 +41,7 @@ def main():
                 st.session_state.processor = DataProcessor(df)
                 st.session_state.visualizer = Visualizer(df)
                 st.session_state.text_analyzer = TextAnalyzer(df)
-        
+            
             # Sidebar filters
             st.sidebar.title("Filters")
             years = []
@@ -129,6 +130,102 @@ def main():
                         st.info("No themes available for visualization / Нет тем для визуализации")
                 except Exception as e:
                     st.error(f"Error processing themes / Ошибка обработки тем: {str(e)}")
+            
+            # Detailed Analysis Section
+            st.header("Detailed Analysis / Детальный анализ")
+            
+            # Numerical Data Analysis
+            st.subheader("Numerical Data Analysis / Анализ числовых данных")
+            numerical_columns = ['Temperature', 'Duration', 'Pressure', 'TRL']
+            selected_numerical = st.multiselect(
+                "Select numerical variables to analyze / Выберите числовые переменные для анализа",
+                [col for col in numerical_columns if col in filtered_df.columns]
+            )
+            
+            if selected_numerical:
+                for column in selected_numerical:
+                    fig_num = create_visualization(
+                        lambda df: st.session_state.visualizer.plot_numerical_distribution(df, column),
+                        filtered_df,
+                        f"Error analyzing {column} / Ошибка анализа {column}"
+                    )
+                    if fig_num:
+                        st.plotly_chart(fig_num, use_container_width=True)
+            
+            # Categorical Data Analysis
+            st.subheader("Categorical Data Analysis / Анализ категориальных данных")
+            categorical_columns = ['Method', 'Active Agent', 'Environmental Safety', 'Economic Efficiency']
+            selected_categorical = st.multiselect(
+                "Select categorical variables to analyze / Выберите категориальные переменные для анализа",
+                [col for col in categorical_columns if col in filtered_df.columns]
+            )
+            
+            if selected_categorical:
+                for column in selected_categorical:
+                    fig_cat = create_visualization(
+                        lambda df: st.session_state.visualizer.plot_categorical_distribution(df, column),
+                        filtered_df,
+                        f"Error analyzing {column} / Ошибка анализа {column}"
+                    )
+                    if fig_cat:
+                        st.plotly_chart(fig_cat, use_container_width=True)
+            
+            # Text Analysis
+            st.subheader("Text Analysis / Анализ текста")
+            text_columns = ['Conclusions', 'Results', 'article description']
+            selected_text = st.multiselect(
+                "Select text fields to analyze / Выберите текстовые поля для анализа",
+                [col for col in text_columns if col in filtered_df.columns]
+            )
+            
+            if selected_text:
+                for column in selected_text:
+                    fig_text = create_visualization(
+                        lambda df: st.session_state.visualizer.plot_text_analysis(df, column),
+                        filtered_df,
+                        f"Error analyzing {column} / Ошибка анализа {column}"
+                    )
+                    if fig_text:
+                        st.plotly_chart(fig_text, use_container_width=True)
+            
+            # Correlation Analysis
+            st.subheader("Correlation Analysis / Корреляционный анализ")
+            if st.checkbox("Show correlation matrix / Показать корреляционную матрицу"):
+                numeric_cols = filtered_df.select_dtypes(include=[np.number]).columns.tolist()
+                if len(numeric_cols) >= 2:
+                    fig_corr = create_visualization(
+                        lambda df: st.session_state.visualizer.plot_correlation_matrix(df, numeric_cols),
+                        filtered_df,
+                        "Error creating correlation matrix / Ошибка создания корреляционной матрицы"
+                    )
+                    if fig_corr:
+                        st.plotly_chart(fig_corr, use_container_width=True)
+                else:
+                    st.info("Insufficient numerical variables for correlation analysis / "
+                           "Недостаточно числовых переменных для корреляционного анализа")
+            
+            # Relationship Analysis
+            st.subheader("Relationship Analysis / Анализ зависимостей")
+            col1, col2 = st.columns(2)
+            with col1:
+                x_var = st.selectbox(
+                    "Select X variable / Выберите переменную X",
+                    filtered_df.select_dtypes(include=[np.number]).columns
+                )
+            with col2:
+                y_var = st.selectbox(
+                    "Select Y variable / Выберите переменную Y",
+                    filtered_df.select_dtypes(include=[np.number]).columns
+                )
+            
+            if x_var and y_var:
+                fig_rel = create_visualization(
+                    lambda df: st.session_state.visualizer.plot_relationship(df, x_var, y_var),
+                    filtered_df,
+                    "Error creating relationship plot / Ошибка создания графика зависимости"
+                )
+                if fig_rel:
+                    st.plotly_chart(fig_rel, use_container_width=True)
             
             # Advanced Analysis Section
             st.header("Advanced Analysis / Расширенный анализ")

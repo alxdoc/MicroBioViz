@@ -4,6 +4,7 @@ import pandas as pd
 import networkx as nx
 from typing import List, Tuple, Dict
 import numpy as np
+from plotly.subplots import make_subplots
 
 class Visualizer:
     def __init__(self, df: pd.DataFrame):
@@ -73,308 +74,252 @@ class Visualizer:
                 
         return validation
 
-    def plot_trl_distribution(self, df: pd.DataFrame) -> go.Figure:
-        """Create bar chart showing distribution of TRL values"""
+    def plot_numerical_distribution(self, df: pd.DataFrame, column: str) -> go.Figure:
+        """Create boxplot and histogram for numerical data"""
         try:
-            # Validate input data
-            validation = self._validate_dataframe(df, ['TRL'])
-            if not validation['valid']:
-                return self._create_empty_figure(validation['message'])
-
-            # Remove null values and invalid TRL values
-            valid_trl = df['TRL'].dropna()
-            valid_trl = valid_trl[valid_trl.between(1, 9)]
-            
-            if valid_trl.empty:
-                return self._create_empty_figure(
-                    "No valid TRL data available (values should be between 1-9) / "
-                    "Нет действительных данных УГТ (значения должны быть от 1 до 9)"
-                )
-
-            trl_counts = valid_trl.astype(int).value_counts().sort_index()
-            
-            fig = px.bar(
-                x=trl_counts.index,
-                y=trl_counts.values,
-                labels={'x': 'TRL Level / Уровень УГТ', 'y': 'Number of Articles / Количество статей'},
-                title='Distribution of Technology Readiness Levels (TRL) / Распределение уровней технологической готовности (УГТ)'
-            )
-            
-            fig.update_layout(
-                xaxis_title="TRL Level / Уровень УГТ",
-                yaxis_title="Number of Articles / Количество статей",
-                bargap=0.2,
-                height=400,
-                showlegend=False,
-                hovermode='x unified'
-            )
-            
-            fig.update_traces(
-                hovertemplate="<b>TRL Level / Уровень УГТ:</b> %{x}<br><b>Articles / Статьи:</b> %{y}<extra></extra>"
-            )
-            
-            return fig
-            
-        except Exception as e:
-            return self._create_empty_figure(f"Error in TRL visualization / Ошибка визуализации УГТ: {str(e)}")
-
-    def plot_topic_distribution(self, df: pd.DataFrame) -> go.Figure:
-        """Create interactive bar chart of topic distribution"""
-        try:
-            validation = self._validate_dataframe(df, ['rank'])
+            validation = self._validate_dataframe(df, [column])
             if not validation['valid']:
                 return self._create_empty_figure(validation['message'])
             
-            # Remove empty topics
-            valid_topics = df['rank'].dropna().replace('', np.nan).dropna()
+            # Remove null values and convert to numeric
+            valid_data = pd.to_numeric(df[column], errors='coerce').dropna()
             
-            if valid_topics.empty:
+            if valid_data.empty:
                 return self._create_empty_figure(
-                    "No valid topic data available / Нет действительных данных по темам"
+                    f"No valid numerical data for {column} / "
+                    f"Нет действительных числовых данных для {column}"
                 )
             
-            topic_counts = valid_topics.value_counts()
+            # Create subplot with boxplot and histogram
+            fig = make_subplots(
+                rows=2, cols=1,
+                subplot_titles=(
+                    f"Distribution of {column} / Распределение {column}",
+                    f"Histogram of {column} / Гистограмма {column}"
+                )
+            )
             
-            fig = px.bar(
-                x=topic_counts.index,
-                y=topic_counts.values,
-                labels={'x': 'Topic / Тема', 'y': 'Number of Articles / Количество статей'},
-                title='Article Distribution by Topic / Распределение статей по темам'
+            # Add boxplot
+            fig.add_trace(
+                go.Box(y=valid_data, name=column),
+                row=1, col=1
+            )
+            
+            # Add histogram
+            fig.add_trace(
+                go.Histogram(x=valid_data, name=column),
+                row=2, col=1
             )
             
             fig.update_layout(
-                xaxis_title="Topic / Тема",
-                yaxis_title="Number of Articles / Количество статей",
-                bargap=0.2,
-                height=400,
-                showlegend=False,
-                hovermode='x unified'
-            )
-            
-            fig.update_traces(
-                hovertemplate="<b>Topic / Тема:</b> %{x}<br><b>Articles / Статьи:</b> %{y}<extra></extra>"
-            )
-            
-            return fig
-            
-        except Exception as e:
-            return self._create_empty_figure(f"Error in topic distribution / Ошибка распределения тем: {str(e)}")
-
-    def plot_word_cloud(self, word_freq: dict) -> go.Figure:
-        """Create word cloud visualization using plotly"""
-        try:
-            if not word_freq or not isinstance(word_freq, dict) or len(word_freq) == 0:
-                return self._create_empty_figure(
-                    "No themes available for visualization / Нет тем для визуализации"
-                )
-
-            words = list(word_freq.keys())
-            frequencies = list(word_freq.values())
-            
-            if not words or not frequencies or max(frequencies) <= 0:
-                return self._create_empty_figure(
-                    "Invalid word frequencies / Неверные частоты слов"
-                )
-            
-            # Normalize frequencies for sizing
-            max_freq = max(frequencies)
-            sizes = [30 * (f / max_freq) + 10 for f in frequencies]
-            
-            # Calculate positions in a circular layout
-            n_words = len(words)
-            angles = np.linspace(0, 2*np.pi, n_words)
-            radii = np.random.uniform(0.4, 1.0, n_words)
-            
-            x_pos = radii * np.cos(angles)
-            y_pos = radii * np.sin(angles)
-            
-            fig = go.Figure()
-            
-            fig.add_trace(go.Scatter(
-                x=x_pos,
-                y=y_pos,
-                mode='text',
-                text=words,
-                textfont={'size': sizes},
-                hoverinfo='text+name',
-                hovertext=[f"{word}: {freq}" for word, freq in zip(words, frequencies)],
-                textposition='middle center'
-            ))
-            
-            fig.update_layout(
-                title="Word Cloud of Common Themes / Облако слов общих тем",
-                showlegend=False,
-                xaxis={'showgrid': False, 'zeroline': False, 'visible': False},
-                yaxis={'showgrid': False, 'zeroline': False, 'visible': False},
-                hovermode='closest'
-            )
-            return fig
-            
-        except Exception as e:
-            return self._create_empty_figure(f"Error generating word cloud / Ошибка генерации облака слов: {str(e)}")
-
-    def plot_technology_trends(self, df: pd.DataFrame) -> go.Figure:
-        """Create line chart of technology mentions over time"""
-        try:
-            validation = self._validate_dataframe(df, ['Year', 'Technologies'])
-            if not validation['valid']:
-                return self._create_empty_figure(validation['message'])
-            
-            temp_df = df.copy()
-            temp_df['Technologies'] = temp_df['Technologies'].fillna('')
-            temp_df = temp_df[temp_df['Technologies'] != '']
-            temp_df = temp_df.assign(Technologies=temp_df['Technologies'].str.split(';')).explode('Technologies')
-            
-            if temp_df.empty:
-                return self._create_empty_figure(
-                    "No technology mentions found / Упоминания технологий не найдены"
-                )
-            
-            # Remove empty technology strings and year nulls
-            temp_df = temp_df[
-                (temp_df['Technologies'].str.strip() != '') & 
-                (temp_df['Year'].notna())
-            ]
-            
-            if temp_df.empty:
-                return self._create_empty_figure(
-                    "No valid technology data available / Нет действительных данных по технологиям"
-                )
-            
-            tech_by_year = pd.crosstab(temp_df['Year'], temp_df['Technologies'])
-            
-            fig = go.Figure()
-            for tech in tech_by_year.columns:
-                fig.add_trace(go.Scatter(
-                    x=tech_by_year.index,
-                    y=tech_by_year[tech],
-                    name=tech,
-                    mode='lines+markers',
-                    hovertemplate="<b>Year / Год:</b> %{x}<br><b>Mentions / Упоминания:</b> %{y}<extra></extra>"
-                ))
-            
-            fig.update_layout(
-                title="Technology Mentions Over Time / Упоминания технологий с течением времени",
-                xaxis_title="Year / Год",
-                yaxis_title="Mentions / Упоминания",
-                hovermode='x unified',
-                height=400,
-                showlegend=True,
-                legend=dict(
-                    yanchor="top",
-                    y=0.99,
-                    xanchor="left",
-                    x=1.05
-                )
-            )
-            return fig
-            
-        except Exception as e:
-            return self._create_empty_figure(f"Error in technology trends / Ошибка в трендах технологий: {str(e)}")
-
-    def plot_tech_network(self, nodes: List[str], edges: List[Tuple[str, str, float]]) -> go.Figure:
-        """Create technology co-occurrence network visualization"""
-        try:
-            if not nodes or not edges:
-                return self._create_empty_figure(
-                    "No technology network data available / Нет данных для сети технологий"
-                )
-            
-            if len(nodes) < 2:
-                return self._create_empty_figure(
-                    "Insufficient nodes for network visualization / Недостаточно узлов для визуализации сети"
-                )
-            
-            G = nx.Graph()
-            G.add_nodes_from(nodes)
-            
-            # Validate edges
-            valid_edges = [(s, t, w) for s, t, w in edges if s in nodes and t in nodes and isinstance(w, (int, float))]
-            
-            if not valid_edges:
-                return self._create_empty_figure(
-                    "No valid connections between technologies / Нет действительных связей между технологиями"
-                )
-            
-            for source, target, weight in valid_edges:
-                G.add_edge(source, target, weight=weight)
-            
-            pos = nx.spring_layout(G)
-            
-            edge_trace = go.Scatter(
-                x=[], y=[],
-                line=dict(width=1, color='#888'),
-                hoverinfo='none',
-                mode='lines'
-            )
-            
-            for edge in G.edges():
-                x0, y0 = pos[edge[0]]
-                x1, y1 = pos[edge[1]]
-                edge_trace['x'] += (x0, x1, None)
-                edge_trace['y'] += (y0, y1, None)
-            
-            node_trace = go.Scatter(
-                x=[pos[node][0] for node in G.nodes()],
-                y=[pos[node][1] for node in G.nodes()],
-                mode='markers+text',
-                text=list(G.nodes()),
-                textposition="top center",
-                hoverinfo='text',
-                marker=dict(
-                    size=20,
-                    color='lightblue',
-                    line_width=2
-                )
-            )
-            
-            fig = go.Figure(data=[edge_trace, node_trace])
-            fig.update_layout(
-                title="Technology Co-occurrence Network / Сеть совместного появления технологий",
-                showlegend=False,
-                hovermode='closest',
                 height=600,
-                margin=dict(b=20,l=5,r=5,t=40),
-                xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
-                yaxis=dict(showgrid=False, zeroline=False, showticklabels=False)
+                showlegend=False,
+                title_text=f"Analysis of {column} / Анализ {column}"
             )
+            
             return fig
             
         except Exception as e:
-            return self._create_empty_figure(f"Error in network visualization / Ошибка визуализации сети: {str(e)}")
+            return self._create_empty_figure(
+                f"Error in numerical distribution / Ошибка в числовом распределении: {str(e)}"
+            )
 
-    def plot_topic_trends(self, topic_trends: pd.DataFrame) -> go.Figure:
-        """Create heatmap of topic trends over time"""
+    def plot_categorical_distribution(self, df: pd.DataFrame, column: str) -> go.Figure:
+        """Create bar chart for categorical data"""
         try:
-            validation = self._validate_dataframe(topic_trends, ['Year'])
+            validation = self._validate_dataframe(df, [column])
             if not validation['valid']:
                 return self._create_empty_figure(validation['message'])
             
-            if topic_trends.shape[1] < 3:  # Year column plus at least 2 topics
+            # Remove empty values
+            valid_data = df[column].dropna().replace('', np.nan).dropna()
+            
+            if valid_data.empty:
                 return self._create_empty_figure(
-                    "Insufficient topic data for trend analysis / Недостаточно данных для анализа трендов"
+                    f"No valid categorical data for {column} / "
+                    f"Нет действительных категориальных данных для {column}"
                 )
+            
+            value_counts = valid_data.value_counts()
+            
+            fig = px.bar(
+                x=value_counts.index,
+                y=value_counts.values,
+                labels={
+                    'x': f"{column} / Категория",
+                    'y': 'Count / Количество'
+                },
+                title=f"Distribution of {column} / Распределение {column}"
+            )
+            
+            fig.update_layout(
+                height=400,
+                showlegend=False,
+                hovermode='x unified'
+            )
+            
+            return fig
+            
+        except Exception as e:
+            return self._create_empty_figure(
+                f"Error in categorical distribution / Ошибка в категориальном распределении: {str(e)}"
+            )
+
+    def plot_text_analysis(self, df: pd.DataFrame, column: str) -> go.Figure:
+        """Create text analysis visualization"""
+        try:
+            validation = self._validate_dataframe(df, [column])
+            if not validation['valid']:
+                return self._create_empty_figure(validation['message'])
+            
+            # Get text lengths and word counts
+            valid_texts = df[column].dropna().astype(str)
+            
+            if valid_texts.empty:
+                return self._create_empty_figure(
+                    f"No valid text data for {column} / "
+                    f"Нет действительных текстовых данных для {column}"
+                )
+            
+            text_lengths = valid_texts.str.len()
+            word_counts = valid_texts.str.split().str.len()
+            
+            # Create subplot with text length and word count distributions
+            fig = make_subplots(
+                rows=1, cols=2,
+                subplot_titles=(
+                    "Text Length Distribution / Распределение длины текста",
+                    "Word Count Distribution / Распределение количества слов"
+                )
+            )
+            
+            fig.add_trace(
+                go.Box(y=text_lengths, name="Text Length"),
+                row=1, col=1
+            )
+            
+            fig.add_trace(
+                go.Box(y=word_counts, name="Word Count"),
+                row=1, col=2
+            )
+            
+            fig.update_layout(
+                height=400,
+                title_text=f"Text Analysis for {column} / Текстовый анализ для {column}",
+                showlegend=False
+            )
+            
+            return fig
+            
+        except Exception as e:
+            return self._create_empty_figure(
+                f"Error in text analysis / Ошибка в текстовом анализе: {str(e)}"
+            )
+
+    def plot_correlation_matrix(self, df: pd.DataFrame, columns: List[str]) -> go.Figure:
+        """Create correlation matrix for numerical variables"""
+        try:
+            validation = self._validate_dataframe(df, columns)
+            if not validation['valid']:
+                return self._create_empty_figure(validation['message'])
+            
+            # Convert columns to numeric and drop non-numeric
+            numeric_df = df[columns].apply(pd.to_numeric, errors='coerce')
+            
+            if numeric_df.empty:
+                return self._create_empty_figure(
+                    "No valid numerical data for correlation / "
+                    "Нет действительных числовых данных для корреляции"
+                )
+            
+            correlation_matrix = numeric_df.corr()
             
             fig = px.imshow(
-                topic_trends.set_index('Year'),
-                aspect='auto',
-                color_continuous_scale='Viridis',
+                correlation_matrix,
                 labels=dict(
-                    x="Topic / Тема",
-                    y="Year / Год",
-                    color="Proportion / Доля"
+                    color="Correlation / Корреляция"
+                ),
+                color_continuous_scale='RdBu',
+                aspect='auto'
+            )
+            
+            fig.update_layout(
+                title="Correlation Matrix / Корреляционная матрица",
+                height=500,
+                xaxis_title="Variables / Переменные",
+                yaxis_title="Variables / Переменные"
+            )
+            
+            # Add correlation values as annotations
+            for i in range(len(correlation_matrix.columns)):
+                for j in range(len(correlation_matrix.columns)):
+                    fig.add_annotation(
+                        x=i,
+                        y=j,
+                        text=f"{correlation_matrix.iloc[i, j]:.2f}",
+                        showarrow=False,
+                        font_size=10,
+                        font_color='black'
+                    )
+            
+            return fig
+            
+        except Exception as e:
+            return self._create_empty_figure(
+                f"Error in correlation matrix / Ошибка в корреляционной матрице: {str(e)}"
+            )
+
+    def plot_relationship(self, df: pd.DataFrame, x_col: str, y_col: str) -> go.Figure:
+        """Create scatter plot showing relationship between two variables"""
+        try:
+            validation = self._validate_dataframe(df, [x_col, y_col])
+            if not validation['valid']:
+                return self._create_empty_figure(validation['message'])
+            
+            # Convert to numeric and drop invalid values
+            x_data = pd.to_numeric(df[x_col], errors='coerce')
+            y_data = pd.to_numeric(df[y_col], errors='coerce')
+            
+            valid_mask = x_data.notna() & y_data.notna()
+            x_data = x_data[valid_mask]
+            y_data = y_data[valid_mask]
+            
+            if len(x_data) == 0:
+                return self._create_empty_figure(
+                    "No valid data for relationship plot / "
+                    "Нет действительных данных для графика зависимости"
+                )
+            
+            fig = px.scatter(
+                x=x_data,
+                y=y_data,
+                labels={
+                    'x': f"{x_col}",
+                    'y': f"{y_col}"
+                },
+                title=f"Relationship between {x_col} and {y_col} / "
+                      f"Зависимость между {x_col} и {y_col}"
+            )
+            
+            # Add trend line
+            fig.add_trace(
+                go.Scatter(
+                    x=x_data,
+                    y=np.poly1d(np.polyfit(x_data, y_data, 1))(x_data),
+                    name="Trend Line / Линия тренда",
+                    mode='lines',
+                    line=dict(color='red', dash='dash')
                 )
             )
             
             fig.update_layout(
-                title="Topic Trends Over Time / Тренды тем с течением времени",
-                xaxis_title="Topic / Тема",
-                yaxis_title="Year / Год",
                 height=400,
-                coloraxis_colorbar_title="Proportion / Доля"
+                hovermode='closest'
             )
             
             return fig
             
         except Exception as e:
-            return self._create_empty_figure(f"Error in topic trends / Ошибка в трендах тем: {str(e)}")
+            return self._create_empty_figure(
+                f"Error in relationship plot / Ошибка в графике зависимости: {str(e)}"
+            )
