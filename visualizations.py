@@ -223,6 +223,119 @@ class Visualizer:
             return self._create_empty_figure(
                 f"Error creating technology trends / Ошибка создания трендов: {str(e)}"
             )
+            
+    def plot_word_cloud(self, word_frequencies: Dict[str, int]) -> go.Figure:
+        try:
+            if not word_frequencies:
+                return self._create_empty_figure(
+                    "No word frequency data available / Нет данных о частоте слов"
+                )
+            
+            words = list(word_frequencies.keys())
+            frequencies = list(word_frequencies.values())
+            
+            # Calculate positions in a circular layout
+            n_words = len(words)
+            angles = np.linspace(0, 2*np.pi, n_words)
+            radii = np.sqrt(frequencies) / max(np.sqrt(frequencies)) * 0.8
+            
+            x = radii * np.cos(angles)
+            y = radii * np.sin(angles)
+            
+            # Create scatter plot with text
+            fig = go.Figure()
+            
+            # Add words as text with size based on frequency
+            max_freq = max(frequencies)
+            for i, (word, freq) in enumerate(zip(words, frequencies)):
+                size = 20 * (freq / max_freq) + 10  # Scale font size
+                fig.add_trace(go.Scatter(
+                    x=[x[i]],
+                    y=[y[i]],
+                    mode='text',
+                    text=[word],
+                    textfont=dict(
+                        size=size,
+                        color=px.colors.qualitative.Set3[i % len(px.colors.qualitative.Set3)]
+                    ),
+                    hoverinfo='text',
+                    hovertext=f'{word}: {freq}'
+                ))
+            
+            # Update layout
+            fig.update_layout(
+                title="Theme Word Cloud / Облако слов тем",
+                showlegend=False,
+                xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+                yaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+                hovermode='closest',
+                width=800,
+                height=600
+            )
+            
+            return fig
+            
+        except Exception as e:
+            return self._create_empty_figure(
+                f"Error creating word cloud / Ошибка создания облака слов: {str(e)}"
+            )
+
+    def plot_relationship(self, df: pd.DataFrame, x_var: str, y_var: str) -> go.Figure:
+        try:
+            if df.empty or x_var not in df.columns or y_var not in df.columns:
+                return self._create_empty_figure(
+                    "Missing required data / Отсутствуют необходимые данные"
+                )
+            
+            # Get valid data pairs
+            valid_data = df[[x_var, y_var]].dropna()
+            if len(valid_data) < 2:
+                return self._create_empty_figure(
+                    "Insufficient data points / Недостаточно точек данных"
+                )
+            
+            # Calculate correlation
+            correlation, p_value = stats.pearsonr(valid_data[x_var], valid_data[y_var])
+            
+            # Create scatter plot with trend line
+            fig = px.scatter(
+                valid_data,
+                x=x_var,
+                y=y_var,
+                trendline="ols",
+                title=f"Relationship: {x_var} vs {y_var} / Зависимость: {x_var} против {y_var}"
+            )
+            
+            # Add correlation information
+            correlation_text = (
+                f"Correlation / Корреляция: {correlation:.2f}<br>"
+                f"P-value / P-значение: {p_value:.4f}"
+            )
+            
+            fig.add_annotation(
+                xref="paper",
+                yref="paper",
+                x=0.02,
+                y=0.98,
+                text=correlation_text,
+                showarrow=False,
+                bgcolor="white",
+                bordercolor="black",
+                borderwidth=1
+            )
+            
+            # Update layout
+            fig.update_layout(
+                height=500,
+                hovermode='closest'
+            )
+            
+            return fig
+            
+        except Exception as e:
+            return self._create_empty_figure(
+                f"Error creating relationship plot / Ошибка создания графика зависимости: {str(e)}"
+            )
 
     def plot_data_relationships(self, df: pd.DataFrame) -> Dict[str, Any]:
         """
