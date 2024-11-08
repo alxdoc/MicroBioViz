@@ -43,8 +43,9 @@ def main():
                 st.session_state.visualizer = Visualizer(df)
                 st.session_state.text_analyzer = TextAnalyzer(df)
             
-            # Initialize filters dictionary
+            # Initialize filters dictionary and filtered dataframe
             filters: Dict[str, Any] = {}
+            filtered_df = st.session_state.data.copy()
             
             # Sidebar filters
             st.sidebar.title("Filters / Фильтры")
@@ -56,13 +57,36 @@ def main():
                 if valid_years:
                     years = st.sidebar.multiselect("Select Years / Выберите годы", options=valid_years)
                     if years:
-                        filters['Year'] = years
+                        filtered_df = filtered_df[filtered_df['Year'].isin(years)]
             
             # Topic filter
             valid_ranks = sorted(st.session_state.data['rank'].dropna().unique())
             ranks = st.sidebar.multiselect("Select Topics / Выберите темы", options=valid_ranks)
             if ranks:
-                filters['rank'] = ranks
+                filtered_df = filtered_df[filtered_df['rank'].isin(ranks)]
+
+            # Add numeric range filters
+            numeric_cols = st.session_state.data.select_dtypes(include=[np.number]).columns
+            for col in numeric_cols:
+                if col not in ['Year']:  # Skip already handled columns
+                    # Convert to numeric and handle NaN values
+                    valid_values = pd.to_numeric(st.session_state.data[col], errors='coerce').dropna()
+                    if not valid_values.empty:
+                        min_val = float(valid_values.min())
+                        max_val = float(valid_values.max())
+                        if min_val != max_val and not (np.isnan(min_val) or np.isnan(max_val)):
+                            st.sidebar.write(f"{col} Range / Диапазон")
+                            range_vals = st.sidebar.slider(
+                                f"Select range for {col}",
+                                min_value=min_val,
+                                max_value=max_val,
+                                value=(min_val, max_val),
+                                key=f'{col}_range'
+                            )
+                            filtered_df = filtered_df[
+                                (filtered_df[col] >= range_vals[0]) & 
+                                (filtered_df[col] <= range_vals[1])
+                            ]
 
             # Add categorical filters
             categorical_cols = st.session_state.data.select_dtypes(include=['object']).columns
@@ -76,27 +100,7 @@ def main():
                             key=f'{col}_filter'
                         )
                         if selected_vals:
-                            filters[col] = selected_vals
-
-            # Add numeric range filters
-            numeric_cols = st.session_state.data.select_dtypes(include=[np.number]).columns
-            for col in numeric_cols:
-                if col not in ['Year']:  # Skip already handled columns
-                    min_val = float(st.session_state.data[col].min())
-                    max_val = float(st.session_state.data[col].max())
-                    if min_val != max_val:
-                        st.sidebar.write(f"{col} Range / Диапазон")
-                        range_vals = st.sidebar.slider(
-                            f"Select range for {col}",
-                            min_value=min_val,
-                            max_value=max_val,
-                            value=(min_val, max_val),
-                            key=f'{col}_range'
-                        )
-                        filters[col] = range_vals
-
-            # Apply filters
-            filtered_df = filter_dataframe(st.session_state.data, filters)
+                            filtered_df = filtered_df[filtered_df[col].isin(selected_vals)]
             
             if filtered_df.empty:
                 st.warning("No data matches the selected filters / Нет данных, соответствующих выбранным фильтрам")
@@ -156,40 +160,10 @@ def main():
 
             if selected_categorical:
                 for column in selected_categorical:
-                    # Create a copy of the dataframe for sorting
-                    df_sorted = filtered_df.copy()
-                    
-                    # Apply sorting based on selection
-                    sort_key = sort_options[sort_method]
-                    if sort_key == 'frequency_desc':
-                        df_sorted[column] = pd.Categorical(
-                            df_sorted[column],
-                            categories=df_sorted[column].value_counts().index,
-                            ordered=True
-                        )
-                    elif sort_key == 'frequency_asc':
-                        df_sorted[column] = pd.Categorical(
-                            df_sorted[column],
-                            categories=df_sorted[column].value_counts().index[::-1],
-                            ordered=True
-                        )
-                    elif sort_key == 'alpha_asc':
-                        df_sorted[column] = pd.Categorical(
-                            df_sorted[column],
-                            categories=sorted(df_sorted[column].unique()),
-                            ordered=True
-                        )
-                    else:  # alpha_desc
-                        df_sorted[column] = pd.Categorical(
-                            df_sorted[column],
-                            categories=sorted(df_sorted[column].unique(), reverse=True),
-                            ordered=True
-                        )
-                    
                     # Create hierarchical visualization
                     fig_tree = create_visualization(
                         lambda df: st.session_state.visualizer.plot_categorical_tree(df, column),
-                        df_sorted,
+                        filtered_df,
                         f"Error analyzing {column} / Ошибка анализа {column}"
                     )
                     if fig_tree:

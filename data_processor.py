@@ -22,9 +22,12 @@ class DataProcessor:
             if col in self.df.columns:
                 self.df[col] = self.df[col].fillna('').str.strip()
         
-        # Convert TRL to numeric if exists
+        # Convert TRL to numeric and ensure valid range
         if 'TRL' in self.df.columns:
             self.df['TRL'] = pd.to_numeric(self.df['TRL'], errors='coerce')
+            # Ensure valid TRL range (1-9)
+            valid_mask = self.df['TRL'].between(1, 9, inclusive='both')
+            self.df.loc[~valid_mask, 'TRL'] = None
         
         # Extract technology mentions from article description and store as semicolon-separated string
         self.df['Technologies'] = self.df['article description'].apply(self._extract_technologies)
