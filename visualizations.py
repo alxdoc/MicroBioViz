@@ -54,6 +54,61 @@ class Visualizer:
         )
         return fig
 
+    def plot_scatter(self, df: pd.DataFrame, x_column: str, y_column: str, 
+                    color_column: str = None, size_column: str = None) -> go.Figure:
+        try:
+            if df.empty or x_column not in df.columns or y_column not in df.columns:
+                return self._create_empty_figure(
+                    f"No data available for scatter plot / Нет данных для диаграммы рассеяния"
+                )
+            
+            # Create scatter plot
+            fig = px.scatter(
+                df,
+                x=x_column,
+                y=y_column,
+                color=color_column if color_column in df.columns else None,
+                size=size_column if size_column in df.columns else None,
+                title=f"{y_column} vs {x_column} / {y_column} против {x_column}",
+                labels={
+                    x_column: f"{x_column}",
+                    y_column: f"{y_column}",
+                    'color': f"{color_column}" if color_column else None,
+                    'size': f"{size_column}" if size_column else None
+                },
+                trendline="ols" if df[x_column].dtype.kind in 'biufc' and df[y_column].dtype.kind in 'biufc' else None
+            )
+            
+            # Update layout
+            fig.update_layout(
+                height=600,
+                width=800,
+                hovermode='closest'
+            )
+            
+            # Enhanced hover template
+            hover_template = (
+                f"<b>{x_column}:</b> %{{x}}<br>"
+                f"<b>{y_column}:</b> %{{y}}<br>"
+            )
+            if color_column:
+                hover_template += f"<b>{color_column}:</b> %{{color}}<br>"
+            if size_column:
+                hover_template += f"<b>{size_column}:</b> %{{size}}<br>"
+            hover_template += "<extra></extra>"
+            
+            fig.update_traces(
+                hovertemplate=hover_template
+            )
+            
+            return fig
+            
+        except Exception as e:
+            return self._create_empty_figure(
+                f"Error creating scatter plot / Ошибка создания диаграммы рассеяния: {str(e)}"
+            )
+
+    # [Previous methods remain unchanged]
     def plot_categorical_tree(self, df: pd.DataFrame, category_column: str) -> go.Figure:
         try:
             if df.empty or category_column not in df.columns:

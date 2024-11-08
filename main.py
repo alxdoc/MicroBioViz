@@ -185,6 +185,62 @@ def main():
             else:
                 st.info("Insufficient numerical variables for correlation analysis / "
                        "Недостаточно числовых переменных для корреляционного анализа")
+
+            # Scatter Plot Analysis
+            st.subheader("Scatter Plot Analysis / Анализ диаграммы рассеяния")
+            
+            # Get numerical and categorical columns
+            numeric_columns = filtered_df.select_dtypes(include=[np.number]).columns.tolist()
+            categorical_columns = filtered_df.select_dtypes(include=['object']).columns.tolist()
+            all_columns = numeric_columns + categorical_columns
+            
+            # Column selection
+            col1, col2 = st.columns(2)
+            with col1:
+                x_column = st.selectbox(
+                    "Select X-axis variable / Выберите переменную оси X",
+                    options=all_columns,
+                    key="scatter_x"
+                )
+            
+            with col2:
+                y_column = st.selectbox(
+                    "Select Y-axis variable / Выберите переменную оси Y",
+                    options=all_columns,
+                    key="scatter_y"
+                )
+            
+            # Optional parameters
+            col1, col2 = st.columns(2)
+            with col1:
+                color_column = st.selectbox(
+                    "Color by (optional) / Цвет по (необязательно)",
+                    options=['None'] + categorical_columns,
+                    key="scatter_color"
+                )
+            
+            with col2:
+                size_column = st.selectbox(
+                    "Size by (optional) / Размер по (необязательно)",
+                    options=['None'] + numeric_columns,
+                    key="scatter_size"
+                )
+            
+            # Create scatter plot
+            if x_column and y_column:
+                fig_scatter = create_visualization(
+                    lambda df: st.session_state.visualizer.plot_scatter(
+                        df, 
+                        x_column, 
+                        y_column,
+                        None if color_column == 'None' else color_column,
+                        None if size_column == 'None' else size_column
+                    ),
+                    filtered_df,
+                    "Error creating scatter plot / Ошибка создания диаграммы рассеяния"
+                )
+                if fig_scatter:
+                    st.plotly_chart(fig_scatter, use_container_width=True)
         
         except Exception as e:
             st.error(f"Error: {str(e)}")
