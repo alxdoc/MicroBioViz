@@ -202,6 +202,23 @@ def main():
                 st.info("Insufficient numerical variables for correlation analysis / "
                        "Недостаточно числовых переменных для корреляционного анализа")
 
+            # Hierarchical Analysis
+            st.subheader("Hierarchical Analysis / Иерархический анализ")
+            hierarchy_columns = st.multiselect(
+                "Select hierarchy levels (in order) / Выберите уровни иерархии (по порядку)",
+                options=[col for col in filtered_df.columns if col != 'Year'],
+                key='hierarchy_columns'
+            )
+
+            if hierarchy_columns:
+                fig_sunburst = create_visualization(
+                    lambda df: st.session_state.visualizer.plot_sunburst(df, hierarchy_columns),
+                    filtered_df,
+                    "Error creating sunburst chart / Ошибка создания лучевой диаграммы"
+                )
+                if fig_sunburst:
+                    st.plotly_chart(fig_sunburst, use_container_width=True)
+
             # Scatter Plot Analysis
             st.subheader("Scatter Plot Analysis / Анализ диаграммы рассеяния")
             

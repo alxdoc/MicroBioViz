@@ -337,3 +337,58 @@ class Visualizer:
             return self._create_empty_figure(
                 f"Error creating correlation matrix / Ошибка создания корреляционной матрицы: {str(e)}"
             )
+
+    def plot_sunburst(self, df: pd.DataFrame, hierarchy_columns: List[str]) -> go.Figure:
+        try:
+            if df.empty or not all(col in df.columns for col in hierarchy_columns):
+                return self._create_empty_figure(
+                    "No data available for sunburst / Нет данных для лучевой диаграммы"
+                )
+            
+            # Prepare data for sunburst chart
+            data = []
+            for _, row in df.iterrows():
+                current_path = []
+                for col in hierarchy_columns:
+                    if pd.notna(row[col]):
+                        current_path.append(str(row[col]))
+                        # Add each level of the hierarchy
+                        data.append({
+                            'id': '/'.join(current_path),
+                            'parent': '/'.join(current_path[:-1]) if len(current_path) > 1 else '',
+                            'labels': current_path[-1],
+                            'level': len(current_path)
+                        })
+            
+            # Convert to DataFrame for counting
+            hierarchy_df = pd.DataFrame(data)
+            value_counts = hierarchy_df.groupby('id').size().reset_index(name='count')
+            
+            # Create sunburst chart
+            fig = go.Figure(go.Sunburst(
+                ids=value_counts['id'],
+                labels=[id.split('/')[-1] for id in value_counts['id']],
+                parents=['/'.join(id.split('/')[:-1]) if '/' in id else '' for id in value_counts['id']],
+                values=value_counts['count'],
+                branchvalues='total',
+                hovertemplate=(
+                    '<b>%{label}</b><br>'
+                    'Count: %{value}<br>'
+                    '<extra></extra>'
+                )
+            ))
+            
+            # Update layout
+            fig.update_layout(
+                title="Hierarchical Data Visualization / Иерархическая визуализация данных",
+                width=800,
+                height=800,
+                margin=dict(t=50, l=0, r=0, b=0)
+            )
+            
+            return fig
+            
+        except Exception as e:
+            return self._create_empty_figure(
+                f"Error creating sunburst chart / Ошибка создания лучевой диаграммы: {str(e)}"
+            )
