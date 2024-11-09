@@ -223,6 +223,15 @@ wheels = [
 ]
 
 [[package]]
+name = "langdetect"
+version = "1.0.9"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "six" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/0e/72/a3add0e4eec4eb9e2569554f7c70f4a3c27712f40e3284d483e88094cc0e/langdetect-1.0.9.tar.gz", hash = "sha256:cbc1fef89f8d062739774bd51eda3da3274006b3661d199c2655f6b3f6d605a0", size = 981474 }
+
+[[package]]
 name = "markdown-it-py"
 version = "3.0.0"
 source = { registry = "https://pypi.org/simple" }
@@ -659,6 +668,7 @@ name = "repl-nix-microbioviz"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
+    { name = "langdetect" },
     { name = "networkx" },
     { name = "nltk" },
     { name = "numpy" },
@@ -672,6 +682,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
+    { name = "langdetect", specifier = ">=1.0.9" },
     { name = "networkx", specifier = ">=3.4.2" },
     { name = "nltk", specifier = ">=3.9.1" },
     { name = "numpy", specifier = ">=2.1.3" },
