@@ -2,6 +2,7 @@ import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
 from collections import Counter
 from typing import Dict, List, Any
+import re
 
 class TextAnalyzer:
     def __init__(self, df: pd.DataFrame):
@@ -40,18 +41,45 @@ class TextAnalyzer:
             from langdetect import detect
             import numpy as np
             
+            # Preprocessing function
+            def preprocess_text(text: str) -> str:
+                # Convert to lowercase
+                text = text.lower()
+                # Remove special characters but keep spaces between words
+                text = re.sub(r'[^\w\s]', ' ', text)
+                # Remove extra whitespace
+                text = ' '.join(text.split())
+                return text
+            
+            if not query.strip():
+                return {'error': 'Empty search query / Пустой поисковый запрос'}
+                
             results = {}
             total_mentions = 0
             mentions_by_column = {}
             
+            # Preprocess query
+            query = preprocess_text(query)
+            
             try:
                 query_lang = detect(query)
             except:
-                query_lang = 'en'  # default to English if detection fails
+                query_lang = 'en'
             
-            # Create separate vectorizers for each language
-            vectorizer_ru = TfidfVectorizer(stop_words=self.ru_stop_words, ngram_range=(1, 2))
-            vectorizer_en = TfidfVectorizer(stop_words=self.en_stop_words, ngram_range=(1, 2))
+            # Lower similarity thresholds
+            threshold_ru = 0.1
+            threshold_en = 0.15
+            
+            # Create vectorizers with better parameters
+            vectorizer_params = {
+                'ngram_range': (1, 3),  # Include up to trigrams
+                'min_df': 1,
+                'max_df': 0.95,
+                'analyzer': 'word'
+            }
+            
+            vectorizer_ru = TfidfVectorizer(stop_words=self.ru_stop_words, **vectorizer_params)
+            vectorizer_en = TfidfVectorizer(stop_words=self.en_stop_words, **vectorizer_params)
             
             for column in text_columns:
                 if column not in self.df.columns:
@@ -61,43 +89,53 @@ class TextAnalyzer:
                 if texts.empty:
                     continue
                 
+                # Preprocess all texts
+                processed_texts = texts.apply(preprocess_text)
+                
                 # Process each text based on its language
                 ru_texts = []
                 en_texts = []
-                text_indices = []  # Keep track of original indices
+                text_indices = []
                 
-                for idx, text in enumerate(texts):
+                for idx, text in enumerate(processed_texts):
                     try:
                         lang = detect(text)
                         if lang == 'ru':
                             ru_texts.append(text)
                             text_indices.append(idx)
-                        else:  # Default to English for other languages
+                        else:
                             en_texts.append(text)
                             text_indices.append(idx)
                     except:
-                        en_texts.append(text)  # Default to English if detection fails
+                        en_texts.append(text)
                         text_indices.append(idx)
                 
-                # Calculate similarities for each language
                 similarities = np.zeros(len(texts))
                 
-                if ru_texts and query_lang == 'ru':
-                    tfidf_matrix_ru = vectorizer_ru.fit_transform(ru_texts)
-                    query_vector_ru = vectorizer_ru.transform([query])
-                    ru_similarities = (query_vector_ru * tfidf_matrix_ru.T).toarray()[0]
-                    for idx, sim in zip(range(len(ru_texts)), ru_similarities):
-                        similarities[text_indices[idx]] = sim
+                # Process Russian texts
+                if ru_texts:
+                    try:
+                        tfidf_matrix_ru = vectorizer_ru.fit_transform(ru_texts)
+                        query_vector_ru = vectorizer_ru.transform([query])
+                        ru_similarities = (query_vector_ru * tfidf_matrix_ru.T).toarray()[0]
+                        for idx, sim in zip(range(len(ru_texts)), ru_similarities):
+                            similarities[text_indices[idx]] = sim
+                    except Exception as e:
+                        print(f"Error processing Russian texts: {str(e)}")
                 
-                if en_texts and query_lang != 'ru':
-                    tfidf_matrix_en = vectorizer_en.fit_transform(en_texts)
-                    query_vector_en = vectorizer_en.transform([query])
-                    en_similarities = (query_vector_en * tfidf_matrix_en.T).toarray()[0]
-                    for idx, sim in zip(range(len(en_texts)), en_similarities):
-                        similarities[text_indices[idx]] = sim
+                # Process English texts
+                if en_texts:
+                    try:
+                        tfidf_matrix_en = vectorizer_en.fit_transform(en_texts)
+                        query_vector_en = vectorizer_en.transform([query])
+                        en_similarities = (query_vector_en * tfidf_matrix_en.T).toarray()[0]
+                        for idx, sim in zip(range(len(en_texts)), en_similarities):
+                            similarities[text_indices[idx]] = sim
+                    except Exception as e:
+                        print(f"Error processing English texts: {str(e)}")
                 
-                # Adjust threshold based on language
-                threshold = 0.2 if query_lang == 'ru' else 0.3
+                # Use appropriate threshold based on query language
+                threshold = threshold_ru if query_lang == 'ru' else threshold_en
                 matches = [(idx, score) for idx, score in enumerate(similarities) if score > threshold]
                 
                 if matches:
@@ -106,9 +144,9 @@ class TextAnalyzer:
                         'mentions': [
                             {
                                 'text': texts.iloc[idx],
-                                'similarity': score,
+                                'similarity': float(score),  # Convert to float for JSON serialization
                                 'metadata': {
-                                    key: self.df.iloc[idx][key]
+                                    key: str(self.df.iloc[idx][key])  # Convert all values to strings
                                     for key in ['Title', 'Authors', 'Year']
                                     if key in self.df.columns
                                 }
@@ -118,6 +156,12 @@ class TextAnalyzer:
                     }
                     total_mentions += len(matches)
             
+            if total_mentions == 0:
+                return {
+                    'error': 'No matches found / Совпадений не найдено',
+                    'query_language': query_lang
+                }
+            
             return {
                 'total_mentions': total_mentions,
                 'mentions_by_column': mentions_by_column,
@@ -125,4 +169,4 @@ class TextAnalyzer:
             }
             
         except Exception as e:
-            return {'error': str(e)}
+            return {'error': f'Search error: {str(e)} / Ошибка поиска: {str(e)}'}
