@@ -338,57 +338,89 @@ class Visualizer:
                 f"Error creating correlation matrix / Ошибка создания корреляционной матрицы: {str(e)}"
             )
 
-    def plot_sunburst(self, df: pd.DataFrame, hierarchy_columns: List[str]) -> go.Figure:
+    def plot_semantic_clusters(self, semantic_data: Dict[str, Any]) -> go.Figure:
         try:
-            if df.empty or not all(col in df.columns for col in hierarchy_columns):
+            if 'error' in semantic_data:
                 return self._create_empty_figure(
-                    "No data available for sunburst / Нет данных для лучевой диаграммы"
+                    f"Error in semantic analysis: {semantic_data['error']}"
                 )
+                
+            # Create network graph
+            clusters = semantic_data['clusters']
+            nodes = []
+            edges = []
             
-            # Prepare data for sunburst chart
-            data = []
-            for _, row in df.iterrows():
-                current_path = []
-                for col in hierarchy_columns:
-                    if pd.notna(row[col]):
-                        current_path.append(str(row[col]))
-                        # Add each level of the hierarchy
-                        data.append({
-                            'id': '/'.join(current_path),
-                            'parent': '/'.join(current_path[:-1]) if len(current_path) > 1 else '',
-                            'labels': current_path[-1],
-                            'level': len(current_path)
+            # Create nodes for each cluster with circular layout
+            import math
+            n_clusters = len(clusters)
+            radius = 1
+            for i, (cluster_id, texts) in enumerate(clusters.items()):
+                angle = 2 * math.pi * i / n_clusters
+                x = radius * math.cos(angle)
+                y = radius * math.sin(angle)
+                
+                cluster_size = len(texts)
+                avg_similarity = np.mean([t['similarity_score'] for t in texts])
+                
+                nodes.append({
+                    'id': f'cluster_{cluster_id}',
+                    'label': f'Group {cluster_id + 1}',
+                    'size': cluster_size,
+                    'title': f'Similarity: {avg_similarity:.2f}',
+                    'x': x,
+                    'y': y
+                })
+                
+            # Create edges between related clusters
+            sim_matrix = semantic_data['similarity_matrix']
+            for i in range(len(clusters)):
+                for j in range(i + 1, len(clusters)):
+                    similarity = np.mean(sim_matrix[list(clusters[i]), :][:, list(clusters[j])])
+                    if similarity > 0.3:  # Threshold for showing connections
+                        edges.append({
+                            'from': i,
+                            'to': j,
+                            'value': similarity
                         })
+                        
+            # Create network visualization
+            fig = go.Figure()
             
-            # Convert to DataFrame for counting
-            hierarchy_df = pd.DataFrame(data)
-            value_counts = hierarchy_df.groupby('id').size().reset_index(name='count')
-            
-            # Create sunburst chart
-            fig = go.Figure(go.Sunburst(
-                ids=value_counts['id'],
-                labels=[id.split('/')[-1] for id in value_counts['id']],
-                parents=['/'.join(id.split('/')[:-1]) if '/' in id else '' for id in value_counts['id']],
-                values=value_counts['count'],
-                branchvalues='total',
-                hovertemplate=(
-                    '<b>%{label}</b><br>'
-                    'Count: %{value}<br>'
-                    '<extra></extra>'
-                )
+            # Add nodes
+            fig.add_trace(go.Scatter(
+                x=[node['x'] for node in nodes],
+                y=[node['y'] for node in nodes],
+                mode='markers+text',
+                marker=dict(size=[node['size'] * 10 for node in nodes]),
+                text=[node['label'] for node in nodes],
+                hovertext=[node['title'] for node in nodes],
+                name='Clusters'
             ))
             
-            # Update layout
+            # Add edges
+            for edge in edges:
+                fig.add_trace(go.Scatter(
+                    x=[nodes[edge['from']]['x'], nodes[edge['to']]['x']],
+                    y=[nodes[edge['from']]['y'], nodes[edge['to']]['y']],
+                    mode='lines',
+                    line=dict(width=edge['value'] * 5),
+                    hoverinfo='skip',
+                    showlegend=False
+                ))
+                
             fig.update_layout(
-                title="Hierarchical Data Visualization / Иерархическая визуализация данных",
+                title='Semantic Clusters Network / Сеть семантических кластеров',
+                showlegend=False,
+                hovermode='closest',
+                xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+                yaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
                 width=800,
-                height=800,
-                margin=dict(t=50, l=0, r=0, b=0)
+                height=800
             )
             
             return fig
             
         except Exception as e:
             return self._create_empty_figure(
-                f"Error creating sunburst chart / Ошибка создания лучевой диаграммы: {str(e)}"
+                f"Error creating semantic visualization: {str(e)}"
             )

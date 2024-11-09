@@ -8,6 +8,9 @@ from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 import networkx as nx
 import logging
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.cluster import AgglomerativeClustering
+from scipy.cluster.hierarchy import linkage, dendrogram
 
 class TextAnalyzer:
     def __init__(self, df: pd.DataFrame):
@@ -336,3 +339,43 @@ class TextAnalyzer:
         except Exception as e:
             self._log('error', f"Error calculating TRL-Year correlation: {str(e)}")
             return result
+
+    def analyze_semantic_relationships(self, text_column: str) -> Dict[str, Any]:
+        """Analyze semantic relationships between texts using TF-IDF and clustering"""
+        try:
+            # Get non-empty texts
+            texts = self.df[text_column].dropna().astype(str)
+            if texts.empty:
+                return {'error': 'No valid text data'}
+                
+            # Create TF-IDF vectors
+            vectorizer = TfidfVectorizer(stop_words=list(self.stop_words))
+            tfidf_matrix = vectorizer.fit_transform(texts)
+            
+            # Calculate similarity matrix
+            similarity_matrix = (tfidf_matrix * tfidf_matrix.T).toarray()
+            
+            # Perform hierarchical clustering
+            n_clusters = min(10, len(texts))
+            clustering = AgglomerativeClustering(n_clusters=n_clusters)
+            clusters = clustering.fit_predict(similarity_matrix)
+            
+            # Group similar texts
+            clustered_texts = {}
+            for idx, cluster in enumerate(clusters):
+                if cluster not in clustered_texts:
+                    clustered_texts[cluster] = []
+                clustered_texts[cluster].append({
+                    'text': texts.iloc[idx],
+                    'similarity_score': np.mean(similarity_matrix[idx])
+                })
+                
+            return {
+                'error': None,
+                'clusters': clustered_texts,
+                'similarity_matrix': similarity_matrix,
+                'feature_names': vectorizer.get_feature_names_out()
+            }
+            
+        except Exception as e:
+            return {'error': str(e)}

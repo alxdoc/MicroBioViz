@@ -130,34 +130,6 @@ def main():
                     if fig_trl:
                         st.plotly_chart(fig_trl, use_container_width=True)
             
-            # Hierarchical Analysis (Sunburst)
-            st.header("Hierarchical Data Analysis (Sunburst) / Иерархический анализ данных (Солнечные лучи)")
-
-            # Create two columns for better layout
-            col1, col2 = st.columns([3, 1])
-
-            with col1:
-                hierarchy_columns = st.multiselect(
-                    "Select hierarchy levels (from general to specific) / Выберите уровни иерархии (от общего к частному)",
-                    options=[col for col in filtered_df.columns if col not in ['Year', 'Title', 'article description']],
-                    default=['rank'] if 'rank' in filtered_df.columns else None,
-                    help="Select multiple columns to create hierarchy levels / Выберите несколько столбцов для создания уровней иерархии"
-                )
-
-            with col2:
-                st.info("Select at least one column for hierarchy / Выберите хотя бы один столбец для иерархии")
-
-            if hierarchy_columns:
-                fig_sunburst = create_visualization(
-                    lambda df: st.session_state.visualizer.plot_sunburst(df, hierarchy_columns),
-                    filtered_df,
-                    "Error creating sunburst chart / Ошибка создания лучевой диаграммы"
-                )
-                if fig_sunburst:
-                    st.plotly_chart(fig_sunburst, use_container_width=True)
-            else:
-                st.warning("Please select columns for hierarchical visualization / Пожалуйста, выберите столбцы для иерархической визуализации")
-            
             # Advanced Analysis Section
             st.header("Advanced Analysis / Расширенный анализ")
             
@@ -214,7 +186,29 @@ def main():
                     )
                     if fig_text:
                         st.plotly_chart(fig_text, use_container_width=True)
-            
+
+            # Semantic Analysis
+            st.subheader("Semantic Analysis / Семантический анализ")
+            semantic_columns = ['article description', 'Title', 'Results', 'Conclusions']
+            selected_semantic = st.selectbox(
+                "Select text field for semantic analysis / Выберите поле для семантического анализа",
+                [col for col in semantic_columns if col in filtered_df.columns]
+            )
+
+            if selected_semantic:
+                semantic_results = st.session_state.text_analyzer.analyze_semantic_relationships(selected_semantic)
+                if not semantic_results.get('error'):
+                    fig_semantic = st.session_state.visualizer.plot_semantic_clusters(semantic_results)
+                    st.plotly_chart(fig_semantic, use_container_width=True)
+                    
+                    # Show cluster details
+                    for cluster_id, texts in semantic_results['clusters'].items():
+                        with st.expander(f"Group {cluster_id + 1} Details / Детали группы {cluster_id + 1}"):
+                            for item in texts:
+                                st.write(f"Similarity: {item['similarity_score']:.2f}")
+                                st.write(item['text'])
+                                st.write("---")
+
             # Correlation Analysis
             st.subheader("Correlation Analysis / Корреляционный анализ")
             numeric_cols = filtered_df.select_dtypes(include=[np.number]).columns.tolist()
