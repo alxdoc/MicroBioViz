@@ -54,103 +54,6 @@ class Visualizer:
         )
         return fig
 
-    def plot_scatter(self, df: pd.DataFrame, x_column: str, y_column: str, 
-                    color_column: str = None, size_column: str = None) -> go.Figure:
-        try:
-            if df.empty or x_column not in df.columns or y_column not in df.columns:
-                return self._create_empty_figure(
-                    f"No data available for scatter plot / Нет данных для диаграммы рассеяния"
-                )
-            
-            # Create scatter plot
-            fig = px.scatter(
-                df,
-                x=x_column,
-                y=y_column,
-                color=color_column if color_column in df.columns else None,
-                size=size_column if size_column in df.columns else None,
-                title=f"{y_column} vs {x_column} / {y_column} против {x_column}",
-                labels={
-                    x_column: f"{x_column}",
-                    y_column: f"{y_column}",
-                    'color': f"{color_column}" if color_column else None,
-                    'size': f"{size_column}" if size_column else None
-                },
-                trendline="ols" if df[x_column].dtype.kind in 'biufc' and df[y_column].dtype.kind in 'biufc' else None
-            )
-            
-            # Update layout with new responsive settings
-            fig.update_layout(
-                height=500,
-                margin=dict(l=50, r=50, t=50, b=50),
-                hovermode='closest',
-                template='plotly_white'
-            )
-            
-            # Enhanced hover template
-            hover_template = (
-                f"<b>{x_column}:</b> %{{x}}<br>"
-                f"<b>{y_column}:</b> %{{y}}<br>"
-            )
-            if color_column:
-                hover_template += f"<b>{color_column}:</b> %{{color}}<br>"
-            if size_column:
-                hover_template += f"<b>{size_column}:</b> %{{size}}<br>"
-            hover_template += "<extra></extra>"
-            
-            fig.update_traces(
-                hovertemplate=hover_template
-            )
-            
-            return fig
-            
-        except Exception as e:
-            return self._create_empty_figure(
-                f"Error creating scatter plot / Ошибка создания диаграммы рассеяния: {str(e)}"
-            )
-
-    def plot_categorical_tree(self, df: pd.DataFrame, category_column: str) -> go.Figure:
-        try:
-            if df.empty or category_column not in df.columns:
-                return self._create_empty_figure(
-                    f"No {category_column} data available / Нет данных {category_column}"
-                )
-            
-            # Get category counts and sort by frequency
-            category_counts = df[category_column].value_counts()
-            if category_counts.empty:
-                return self._create_empty_figure(
-                    f"No valid {category_column} data / Нет действительных данных {category_column}"
-                )
-            
-            # Create hierarchical data structure
-            fig = go.Figure(go.Treemap(
-                labels=[f"{cat}<br>({count})" for cat, count in category_counts.items()],
-                parents=["" for _ in range(len(category_counts))],
-                values=category_counts.values,
-                textinfo="label",
-                hovertemplate=(
-                    "<b>Category:</b> %{label}<br>"
-                    "<b>Count:</b> %{value}<br>"
-                    "<extra></extra>"
-                )
-            ))
-            
-            # Update layout
-            fig.update_layout(
-                title=f"{category_column} Hierarchical Distribution / Иерархическое распределение {category_column}",
-                width=800,
-                height=600,
-                margin=dict(t=50, l=0, r=0, b=0)
-            )
-            
-            return fig
-            
-        except Exception as e:
-            return self._create_empty_figure(
-                f"Error creating hierarchical distribution / Ошибка создания иерархического распределения: {str(e)}"
-            )
-
     def plot_topic_distribution(self, df: pd.DataFrame) -> go.Figure:
         try:
             if df.empty or 'rank' not in df.columns:
@@ -247,6 +150,48 @@ class Visualizer:
                 f"Error creating TRL distribution / Ошибка создания распределения УГТ: {str(e)}"
             )
 
+    def plot_categorical_tree(self, df: pd.DataFrame, column: str) -> go.Figure:
+        try:
+            if df.empty or column not in df.columns:
+                return self._create_empty_figure(
+                    f"No {column} data available / Нет данных {column}"
+                )
+            
+            # Get category counts and sort by frequency
+            category_counts = df[column].value_counts()
+            if category_counts.empty:
+                return self._create_empty_figure(
+                    f"No valid {column} data / Нет действительных данных {column}"
+                )
+            
+            # Create hierarchical data structure
+            fig = go.Figure(go.Treemap(
+                labels=[f"{cat}<br>({count})" for cat, count in category_counts.items()],
+                parents=["" for _ in range(len(category_counts))],
+                values=category_counts.values,
+                textinfo="label",
+                hovertemplate=(
+                    "<b>Category:</b> %{label}<br>"
+                    "<b>Count:</b> %{value}<br>"
+                    "<extra></extra>"
+                )
+            ))
+            
+            # Update layout
+            fig.update_layout(
+                title=f"{column} Hierarchical Distribution / Иерархическое распределение {column}",
+                width=800,
+                height=600,
+                margin=dict(t=50, l=0, r=0, b=0)
+            )
+            
+            return fig
+            
+        except Exception as e:
+            return self._create_empty_figure(
+                f"Error creating hierarchical distribution / Ошибка создания иерархического распределения: {str(e)}"
+            )
+
     def plot_text_analysis(self, df: pd.DataFrame, column: str) -> go.Figure:
         try:
             if df.empty or column not in df.columns:
@@ -338,89 +283,108 @@ class Visualizer:
                 f"Error creating correlation matrix / Ошибка создания корреляционной матрицы: {str(e)}"
             )
 
-    def plot_semantic_clusters(self, semantic_data: Dict[str, Any]) -> go.Figure:
+    def plot_scatter(self, df: pd.DataFrame, x_column: str, y_column: str, 
+                    color_column: str = None, size_column: str = None) -> go.Figure:
         try:
-            if 'error' in semantic_data:
+            if df.empty or x_column not in df.columns or y_column not in df.columns:
                 return self._create_empty_figure(
-                    f"Error in semantic analysis: {semantic_data['error']}"
+                    f"No data available for scatter plot / Нет данных для диаграммы рассеяния"
                 )
-                
-            # Create network graph
-            clusters = semantic_data['clusters']
-            nodes = []
-            edges = []
             
-            # Create nodes for each cluster with circular layout
-            import math
-            n_clusters = len(clusters)
-            radius = 1
-            for i, (cluster_id, texts) in enumerate(clusters.items()):
-                angle = 2 * math.pi * i / n_clusters
-                x = radius * math.cos(angle)
-                y = radius * math.sin(angle)
-                
-                cluster_size = len(texts)
-                avg_similarity = np.mean([t['similarity_score'] for t in texts])
-                
-                nodes.append({
-                    'id': f'cluster_{cluster_id}',
-                    'label': f'Group {cluster_id + 1}',
-                    'size': cluster_size,
-                    'title': f'Similarity: {avg_similarity:.2f}',
-                    'x': x,
-                    'y': y
-                })
-                
-            # Create edges between related clusters
-            sim_matrix = semantic_data['similarity_matrix']
-            for i in range(len(clusters)):
-                for j in range(i + 1, len(clusters)):
-                    similarity = np.mean(sim_matrix[list(clusters[i]), :][:, list(clusters[j])])
-                    if similarity > 0.3:  # Threshold for showing connections
-                        edges.append({
-                            'from': i,
-                            'to': j,
-                            'value': similarity
-                        })
-                        
-            # Create network visualization
-            fig = go.Figure()
+            # Create scatter plot
+            fig = px.scatter(
+                df,
+                x=x_column,
+                y=y_column,
+                color=color_column if color_column in df.columns else None,
+                size=size_column if size_column in df.columns else None,
+                title=f"{y_column} vs {x_column} / {y_column} против {x_column}",
+                labels={
+                    x_column: f"{x_column}",
+                    y_column: f"{y_column}",
+                    'color': f"{color_column}" if color_column else None,
+                    'size': f"{size_column}" if size_column else None
+                },
+                trendline="ols" if df[x_column].dtype.kind in 'biufc' and df[y_column].dtype.kind in 'biufc' else None
+            )
             
-            # Add nodes
-            fig.add_trace(go.Scatter(
-                x=[node['x'] for node in nodes],
-                y=[node['y'] for node in nodes],
-                mode='markers+text',
-                marker=dict(size=[node['size'] * 10 for node in nodes]),
-                text=[node['label'] for node in nodes],
-                hovertext=[node['title'] for node in nodes],
-                name='Clusters'
-            ))
-            
-            # Add edges
-            for edge in edges:
-                fig.add_trace(go.Scatter(
-                    x=[nodes[edge['from']]['x'], nodes[edge['to']]['x']],
-                    y=[nodes[edge['from']]['y'], nodes[edge['to']]['y']],
-                    mode='lines',
-                    line=dict(width=edge['value'] * 5),
-                    hoverinfo='skip',
-                    showlegend=False
-                ))
-                
+            # Update layout with new responsive settings
             fig.update_layout(
-                title='Semantic Clusters Network / Сеть семантических кластеров',
-                showlegend=False,
+                height=500,
+                margin=dict(l=50, r=50, t=50, b=50),
                 hovermode='closest',
-                xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
-                yaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
-                width=800,
-                height=800
+                template='plotly_white'
+            )
+            
+            # Enhanced hover template
+            hover_template = (
+                f"<b>{x_column}:</b> %{{x}}<br>"
+                f"<b>{y_column}:</b> %{{y}}<br>"
+            )
+            if color_column:
+                hover_template += f"<b>{color_column}:</b> %{{color}}<br>"
+            if size_column:
+                hover_template += f"<b>{size_column}:</b> %{{size}}<br>"
+            hover_template += "<extra></extra>"
+            
+            fig.update_traces(
+                hovertemplate=hover_template
             )
             
             return fig
             
         except Exception as e:
             return self._create_empty_figure(
-                f"Error creating semantic visualization: {str(e)}"
+                f"Error creating scatter plot / Ошибка создания диаграммы рассеяния: {str(e)}"
+            )
+
+    def plot_mentions_distribution(self, search_results: Dict[str, Any]) -> go.Figure:
+        try:
+            if 'error' in search_results:
+                return self._create_empty_figure(
+                    f"Error in search visualization: {search_results['error']}"
+                )
+                
+            mentions = search_results.get('mentions_by_column', {})
+            if not mentions:
+                return self._create_empty_figure(
+                    "No mentions found / Упоминания не найдены"
+                )
+            
+            # Prepare data for visualization
+            columns = list(mentions.keys())
+            counts = [info['count'] for info in mentions.values()]
+            
+            # Create bar chart
+            fig = px.bar(
+                x=columns,
+                y=counts,
+                title="Mentions Distribution / Распределение упоминаний",
+                labels={
+                    'x': 'Field / Поле',
+                    'y': 'Number of Mentions / Количество упоминаний'
+                }
+            )
+            
+            # Update layout
+            fig.update_layout(
+                height=400,
+                showlegend=False,
+                hovermode='x unified'
+            )
+            
+            # Add hover template
+            fig.update_traces(
+                hovertemplate=(
+                    "<b>Field:</b> %{x}<br>"
+                    "<b>Mentions:</b> %{y}<br>"
+                    "<extra></extra>"
+                )
+            )
+            
+            return fig
+            
+        except Exception as e:
+            return self._create_empty_figure(
+                f"Error creating mentions visualization: {str(e)}"
             )

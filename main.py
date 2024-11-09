@@ -105,6 +105,48 @@ def main():
             if filtered_df.empty:
                 st.warning("No data matches the selected filters / Нет данных, соответствующих выбранным фильтрам")
                 return
+
+            # Semantic Search Section
+            st.header("Semantic Search / Семантический поиск")
+            search_query = st.text_input(
+                "Enter search term / Введите поисковый запрос",
+                key="semantic_search"
+            )
+
+            if search_query:
+                # Define searchable columns
+                text_columns = ['Title', 'article description', 'Results', 'Conclusions']
+                available_columns = [col for col in text_columns if col in filtered_df.columns]
+                
+                # Perform search
+                search_results = st.session_state.text_analyzer.semantic_search(
+                    search_query,
+                    available_columns
+                )
+                
+                if 'error' in search_results:
+                    st.error(f"Search error: {search_results['error']}")
+                else:
+                    # Show total mentions
+                    st.metric(
+                        "Total Mentions / Всего упоминаний",
+                        search_results['total_mentions']
+                    )
+                    
+                    # Show mentions distribution
+                    fig_mentions = st.session_state.visualizer.plot_mentions_distribution(search_results)
+                    st.plotly_chart(fig_mentions, use_container_width=True)
+                    
+                    # Show detailed results
+                    for column, info in search_results['mentions_by_column'].items():
+                        with st.expander(f"{column} ({info['count']} mentions)"):
+                            for mention in info['mentions']:
+                                st.write("---")
+                                st.write("**Relevance Score:** {:.2f}".format(mention['similarity']))
+                                for key, value in mention['metadata'].items():
+                                    st.write(f"**{key}:** {value}")
+                                st.write("**Text:**")
+                                st.write(mention['text'])
             
             # Main content layout
             col1, col2 = st.columns(2)
@@ -187,28 +229,6 @@ def main():
                     if fig_text:
                         st.plotly_chart(fig_text, use_container_width=True)
 
-            # Semantic Analysis
-            st.subheader("Semantic Analysis / Семантический анализ")
-            semantic_columns = ['article description', 'Title', 'Results', 'Conclusions']
-            selected_semantic = st.selectbox(
-                "Select text field for semantic analysis / Выберите поле для семантического анализа",
-                [col for col in semantic_columns if col in filtered_df.columns]
-            )
-
-            if selected_semantic:
-                semantic_results = st.session_state.text_analyzer.analyze_semantic_relationships(selected_semantic)
-                if not semantic_results.get('error'):
-                    fig_semantic = st.session_state.visualizer.plot_semantic_clusters(semantic_results)
-                    st.plotly_chart(fig_semantic, use_container_width=True)
-                    
-                    # Show cluster details
-                    for cluster_id, texts in semantic_results['clusters'].items():
-                        with st.expander(f"Group {cluster_id + 1} Details / Детали группы {cluster_id + 1}"):
-                            for item in texts:
-                                st.write(f"Similarity: {item['similarity_score']:.2f}")
-                                st.write(item['text'])
-                                st.write("---")
-
             # Correlation Analysis
             st.subheader("Correlation Analysis / Корреляционный анализ")
             numeric_cols = filtered_df.select_dtypes(include=[np.number]).columns.tolist()
@@ -226,7 +246,6 @@ def main():
 
             # Scatter Plot Analysis
             st.subheader("Scatter Plot Analysis / Анализ диаграммы рассеяния")
-            
             scatter_container = st.container()
             with scatter_container:
                 # Get numerical and categorical columns
