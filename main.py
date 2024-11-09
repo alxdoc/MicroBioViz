@@ -130,6 +130,34 @@ def main():
                     if fig_trl:
                         st.plotly_chart(fig_trl, use_container_width=True)
             
+            # Hierarchical Analysis (Sunburst)
+            st.header("Hierarchical Data Analysis (Sunburst) / Иерархический анализ данных (Солнечные лучи)")
+
+            # Create two columns for better layout
+            col1, col2 = st.columns([3, 1])
+
+            with col1:
+                hierarchy_columns = st.multiselect(
+                    "Select hierarchy levels (from general to specific) / Выберите уровни иерархии (от общего к частному)",
+                    options=[col for col in filtered_df.columns if col not in ['Year', 'Title', 'article description']],
+                    default=['rank'] if 'rank' in filtered_df.columns else None,
+                    help="Select multiple columns to create hierarchy levels / Выберите несколько столбцов для создания уровней иерархии"
+                )
+
+            with col2:
+                st.info("Select at least one column for hierarchy / Выберите хотя бы один столбец для иерархии")
+
+            if hierarchy_columns:
+                fig_sunburst = create_visualization(
+                    lambda df: st.session_state.visualizer.plot_sunburst(df, hierarchy_columns),
+                    filtered_df,
+                    "Error creating sunburst chart / Ошибка создания лучевой диаграммы"
+                )
+                if fig_sunburst:
+                    st.plotly_chart(fig_sunburst, use_container_width=True)
+            else:
+                st.warning("Please select columns for hierarchical visualization / Пожалуйста, выберите столбцы для иерархической визуализации")
+            
             # Advanced Analysis Section
             st.header("Advanced Analysis / Расширенный анализ")
             
@@ -201,23 +229,6 @@ def main():
             else:
                 st.info("Insufficient numerical variables for correlation analysis / "
                        "Недостаточно числовых переменных для корреляционного анализа")
-
-            # Hierarchical Analysis
-            st.subheader("Hierarchical Analysis / Иерархический анализ")
-            hierarchy_columns = st.multiselect(
-                "Select hierarchy levels (in order) / Выберите уровни иерархии (по порядку)",
-                options=[col for col in filtered_df.columns if col != 'Year'],
-                key='hierarchy_columns'
-            )
-
-            if hierarchy_columns:
-                fig_sunburst = create_visualization(
-                    lambda df: st.session_state.visualizer.plot_sunburst(df, hierarchy_columns),
-                    filtered_df,
-                    "Error creating sunburst chart / Ошибка создания лучевой диаграммы"
-                )
-                if fig_sunburst:
-                    st.plotly_chart(fig_sunburst, use_container_width=True)
 
             # Scatter Plot Analysis
             st.subheader("Scatter Plot Analysis / Анализ диаграммы рассеяния")
